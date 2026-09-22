@@ -411,12 +411,26 @@ function buscarUltimoPedidoPorTelefone(tel) {
 }
 
 function atualizarDatalist() {
-    getAllPedidos().then(pedidos => {
-        const clientesUnicos = [...new Set(pedidos.map(p => p.cliente))].sort();
-        const telefonesUnicos = [...new Set(pedidos.map(p => p.telefone))].sort();
+    Promise.all([
+        getAllPedidos(),
+        get(ref(remoteDb, 'clientes')).then(snap => snap.val() || {}).catch(() => ({}))
+    ]).then(([pedidos, clientesData]) => {
+        const nomes = new Set(pedidos.map(p => p.cliente));
+        const tels = new Set(pedidos.map(p => p.telefone));
+
+        Object.values(clientesData).forEach(c => {
+            if (c.nome) nomes.add(c.nome.trim().toUpperCase());
+            if (c.cliente) nomes.add(c.cliente.trim().toUpperCase());
+            if (c.tel) tels.add(c.tel.trim());
+            if (c.telefone) tels.add(c.telefone.trim());
+        });
+
+        const clientesUnicos = [...nomes].filter(Boolean).sort();
+        const telefonesUnicos = [...tels].filter(Boolean).sort();
 
         const preencherDataList = (id, lista) => {
             const dl = document.getElementById(id);
+            if (!dl) return;
             dl.innerHTML = '';
             lista.forEach(item => {
                 if (item) {
@@ -561,22 +575,51 @@ function exportarExcel() {
     // Cabeçalho — formato solicitado
     const cabecalho = [
         'Data', 'Produto', 'Valor', '', '',
-        'Pagamento', 'Canal de Venda', 'Entregador', 'Nome do Cliente', 'Endereço da Entrega'
+        'Pagamento', 'Canal de Venda', 'Entregador', 'Endereço'
     ];
 
-    // Montar linhas de dados
-    const linhas = dados.map(p => [
-        p.data || '',
-        p.produto || '',
-        p.valor || '',
-        '',
-        '',
-        p.pagamento || '',
-        p.canalVenda || '',
-        p.entregador || '',
-        p.cliente || '',
-        p.endereco || ''
-    ]);
+    // Ordenar primeiramente por data (mais antiga primeiro) e secundariamente por entregador do dia
+    const dadosOrdenados = [...dados].sort((a, b) => {
+        const parseDate = (str) => {
+            const [dataPart] = (str || '').split(/[\s,]+/);
+            const [d, m, y] = (dataPart || '').split('/');
+            return new Date(`${y}-${m}-${d}`);
+        };
+        const compData = parseDate(a.data) - parseDate(b.data);
+        if (compData !== 0) return compData;
+
+        const entA = (a.entregador || '').trim().toLowerCase();
+        const entB = (b.entregador || '').trim().toLowerCase();
+        return entA.localeCompare(entB, 'pt-BR');
+    });
+
+    // Montar linhas de dados com telefone após o endereço
+    const linhas = dadosOrdenados.map(p => {
+        const end = p.endereco || '';
+        const numTel = (p.telefone || p.tel || '').trim();
+        const telStr = numTel ? ` - ${numTel}` : '';
+        const enderecoComTelefone = end + telStr;
+
+        let prod = p.produto || '';
+        if (prod.trim().toUpperCase() === 'GÁS 13KG' || prod.trim().toUpperCase() === '1X GÁS 13KG' || prod.trim() === 'Gás 13kg' || prod.trim() === '1x Gás 13kg') {
+            prod = 'SUPERGASBRAS';
+        }
+
+        // Extrair somente DD/MM/AAAA da string de data/hora
+        const dataApenas = (p.data || '').split(/[\s,]+/)[0] || '';
+
+        return [
+            dataApenas,
+            prod,
+            p.valor || '',
+            '',
+            '',
+            p.pagamento || '',
+            p.canalVenda || '',
+            p.entregador || '',
+            enderecoComTelefone
+        ];
+    });
 
     // Calcular totalizadores ao final
     const totalValor = dados.reduce((acc, p) => {
@@ -609,7 +652,7 @@ function exportarExcel() {
     html += `<tr>
         <td ${estiloTdTotal} colspan="2">TOTAL — ${dados.length} pedido(s)</td>
         <td ${estiloTotalNum}>${totalFormatado}</td>
-        <td ${estiloTdTotal} colspan="7"></td>
+        <td ${estiloTdTotal} colspan="6"></td>
     </tr>`;
 
     html += '</tbody></table>';
