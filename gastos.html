@@ -406,9 +406,6 @@
             gap: 5px;
         }
     </style>
-    <!-- VPS Socket.IO & Adapter (Primeiros Scripts) -->
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-    <script src="js/vps-adapter.js"></script>
 </head>
 
 <body>
@@ -531,6 +528,7 @@
                 </thead>
                 <tbody id="corpoTabelaGastos">
                 </tbody>
+            </table>
         </div>
     </div>
 
@@ -543,7 +541,9 @@
         let chartPizzaInstance = null;
         let chartBarInstance = null;
 
-        const socket = window.vpsSocket || (typeof io !== 'undefined' ? io('http://179.236.224.192:3000') : null);
+        function getSocket() {
+            return window.vpsSocket || (typeof io !== 'undefined' ? io('http://179.236.224.192:3000') : null);
+        }
 
         function initGastos() {
             // Inicializar datas (mês atual)
@@ -562,16 +562,24 @@
             document.getElementById('gastoBuscaDescricao').addEventListener('input', renderizar);
             document.getElementById('filtroGrupoGasto').addEventListener('change', renderizar);
 
-            carregarDados();
+            // Timeout de segurança para nunca travar no 'Carregando'
+            setTimeout(ocultarLoading, 2000);
 
+            const socket = getSocket();
             if (socket) {
-                socket.on('connect', carregarDados);
+                if (socket.connected) {
+                    carregarDados();
+                } else {
+                    socket.on('connect', carregarDados);
+                }
                 socket.on('changed_gastos_diarios', carregarDados);
                 socket.on('changed_grupos_gastos', carregarDados);
             }
+            carregarDados();
         }
 
         function carregarDados() {
+            const socket = getSocket();
             if (!socket) {
                 ocultarLoading();
                 return;
@@ -782,6 +790,8 @@
             };
 
             const id = gastoEditandoId || Date.now().toString();
+            const socket = getSocket();
+            if (!socket) return;
 
             socket.emit('set', { path: `gastos_diarios/${id}`, payload }, () => {
                 alert(gastoEditandoId ? 'Gasto atualizado com sucesso! ✅' : 'Gasto cadastrado com sucesso! ✅');
@@ -825,6 +835,8 @@
 
         function excluirGasto(id) {
             if (!confirm('Deseja realmente excluir este gasto?')) return;
+            const socket = getSocket();
+            if (!socket) return;
             socket.emit('remove', `gastos_diarios/${id}`, () => {
                 carregarDados();
             });
@@ -845,6 +857,9 @@
             }
 
             const id = grupoEditandoId || Date.now().toString();
+            const socket = getSocket();
+            if (!socket) return;
+
             socket.emit('set', { path: `grupos_gastos/${id}`, payload: { nome } }, () => {
                 nomeInput.value = '';
                 cancelarEdicaoGrupo();
@@ -870,6 +885,8 @@
 
         function excluirGrupo(id) {
             if (!confirm('Deseja excluir este grupo?')) return;
+            const socket = getSocket();
+            if (!socket) return;
             socket.emit('remove', `grupos_gastos/${id}`, () => {
                 carregarDados();
             });
@@ -926,6 +943,19 @@
             a.download = `gastos_${dInicio || 'todos'}_a_${dFim || 'todos'}.xls`;
             a.click();
         }
+
+        // Expor funções globais para onclick no HTML
+        window.salvarGasto = salvarGasto;
+        window.editarGasto = editarGasto;
+        window.cancelarEdicao = cancelarEdicao;
+        window.excluirGasto = excluirGasto;
+        window.toggleFormGrupo = toggleFormGrupo;
+        window.salvarGrupo = salvarGrupo;
+        window.editarGrupo = editarGrupo;
+        window.cancelarEdicaoGrupo = cancelarEdicaoGrupo;
+        window.excluirGrupo = excluirGrupo;
+        window.exportarExcelGastos = exportarExcelGastos;
+        window.renderizar = renderizar;
 
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', initGastos);
