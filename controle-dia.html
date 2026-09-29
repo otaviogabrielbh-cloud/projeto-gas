@@ -2052,25 +2052,25 @@
                 <div class="cost-config-box">
                     <div class="filter-group">
                         <label for="inputValorCompraGas">🔥 Gás P13 (R$):</label>
-                        <input type="number" id="inputValorCompraGas" step="0.01" value="85.00" style="width: 80px; font-weight: 700;" title="Custo de compra Gás 13kg">
+                        <input type="text" inputmode="decimal" id="inputValorCompraGas" value="85,00" oninput="window.aoAlterarCustoInput()" style="width: 80px; font-weight: 700; text-align: right;" title="Custo de compra Gás 13kg">
                     </div>
                     <div class="filter-group">
                         <label for="inputValorCompraP45">🏭 P45 (R$):</label>
-                        <input type="number" id="inputValorCompraP45" step="0.01" value="350.00" style="width: 85px; font-weight: 700;" title="Custo de compra Gás 45kg (P45)">
+                        <input type="text" inputmode="decimal" id="inputValorCompraP45" value="350,00" oninput="window.aoAlterarCustoInput()" style="width: 85px; font-weight: 700; text-align: right;" title="Custo de compra Gás 45kg (P45)">
                     </div>
                     <div class="filter-group">
                         <label for="inputValorCompraVazGas">🛢️ Vaz. Gás / Compl. (R$):</label>
-                        <input type="number" id="inputValorCompraVazGas" step="0.01" value="150.00" style="width: 85px; font-weight: 700;" title="Custo Vasilhame de Gás (Gás Completo)">
+                        <input type="text" inputmode="decimal" id="inputValorCompraVazGas" value="150,00" oninput="window.aoAlterarCustoInput()" style="width: 85px; font-weight: 700; text-align: right;" title="Custo Vasilhame de Gás (Gás Completo)">
                     </div>
                     <div class="filter-group">
                         <label for="inputValorCompraAgua">💧 Água (R$):</label>
-                        <input type="number" id="inputValorCompraAgua" step="0.01" value="10.00" style="width: 75px; font-weight: 700;" title="Custo de compra Água Mineral 20L">
+                        <input type="text" inputmode="decimal" id="inputValorCompraAgua" value="10,00" oninput="window.aoAlterarCustoInput()" style="width: 75px; font-weight: 700; text-align: right;" title="Custo de compra Água Mineral 20L">
                     </div>
                     <div class="filter-group">
                         <label for="inputValorCompraVazAgua">🚰 Vaz. Água / Compl. (R$):</label>
-                        <input type="number" id="inputValorCompraVazAgua" step="0.01" value="20.00" style="width: 80px; font-weight: 700;" title="Custo Vasilhame de Água (Água Completa)">
+                        <input type="text" inputmode="decimal" id="inputValorCompraVazAgua" value="20,00" oninput="window.aoAlterarCustoInput()" style="width: 80px; font-weight: 700; text-align: right;" title="Custo Vasilhame de Água (Água Completa)">
                     </div>
-                    <button class="btn-action btn-reload" onclick="window.salvarCustosCompra()" style="background:#f39c12; color:white;" title="Salvar custos padrão no banco de dados">
+                    <button class="btn-action btn-reload" onclick="window.salvarCustosCompra()" style="background:#f39c12; color:white; font-weight: 800;" title="Salvar custos padrão no banco de dados">
                         💾 Salvar Custos
                     </button>
                 </div>
@@ -3207,9 +3207,15 @@
         const N = v => {
             if (typeof v === 'number') return isNaN(v) ? 0 : v;
             if (!v) return 0;
-            const s = String(v).replace('R$', '').trim().replace(/\./g, '').replace(',', '.');
+            let s = String(v).replace('R$', '').trim();
+            if (s.includes(',') && s.includes('.')) {
+                s = s.replace(/\./g, '').replace(',', '.');
+            } else if (s.includes(',')) {
+                s = s.replace(',', '.');
+            }
             return parseFloat(s) || 0;
         };
+        const fmtInput = v => (N(v)).toFixed(2).replace('.', ',');
 
         function dataISO(str) {
             if (!str) return null;
@@ -3321,31 +3327,54 @@
             try {
                 const snap = await window.firebaseGet('configuracoes');
                 if (snap.exists()) {
-                    const cfg = snap.val();
-                    if (cfg && cfg.custos) {
-                        custosPadrao.gas13 = N(cfg.custos.gas13) || 85;
-                        custosPadrao.p45 = N(cfg.custos.p45) || 350;
-                        custosPadrao.vazGas = N(cfg.custos.vazGas) || 150;
-                        custosPadrao.agua = N(cfg.custos.agua) || 10;
-                        custosPadrao.vazAgua = N(cfg.custos.vazAgua) || 20;
-                    }
-                    if (cfg && cfg.taxas) {
+                    const cfg = snap.val() || {};
+                    if (cfg.valor_compra_gas != null) custosPadrao.gas13 = N(cfg.valor_compra_gas);
+                    else if (cfg.custos && cfg.custos.gas13 != null) custosPadrao.gas13 = N(cfg.custos.gas13);
+
+                    if (cfg.valor_compra_p45 != null) custosPadrao.p45 = N(cfg.valor_compra_p45);
+                    else if (cfg.custos && cfg.custos.p45 != null) custosPadrao.p45 = N(cfg.custos.p45);
+
+                    if (cfg.valor_compra_vaz_gas != null) custosPadrao.vazGas = N(cfg.valor_compra_vaz_gas);
+                    else if (cfg.custos && cfg.custos.vazGas != null) custosPadrao.vazGas = N(cfg.custos.vazGas);
+
+                    if (cfg.valor_compra_agua != null) custosPadrao.agua = N(cfg.valor_compra_agua);
+                    else if (cfg.custos && cfg.custos.agua != null) custosPadrao.agua = N(cfg.custos.agua);
+
+                    if (cfg.valor_compra_vaz_agua != null) custosPadrao.vazAgua = N(cfg.valor_compra_vaz_agua);
+                    else if (cfg.custos && cfg.custos.vazAgua != null) custosPadrao.vazAgua = N(cfg.custos.vazAgua);
+
+                    if (cfg.taxas) {
                         taxasCartao.credito = N(cfg.taxas.credito);
                         taxasCartao.debito = N(cfg.taxas.debito);
                         taxasCartao.pix = N(cfg.taxas.pix);
+                    } else if (cfg.taxas_cartao) {
+                        taxasCartao.credito = N(cfg.taxas_cartao.credito);
+                        taxasCartao.debito = N(cfg.taxas_cartao.debito);
+                        taxasCartao.pix = N(cfg.taxas_cartao.pix);
                     }
-                    if (cfg && cfg.taxasApps) {
+                    if (cfg.taxasApps) {
                         taxasApps.appgas = N(cfg.taxasApps.appgas) || 10;
                         taxasApps.precogas = N(cfg.taxasApps.precogas) || 8.40;
+                    } else if (cfg.taxas_apps) {
+                        taxasApps.appgas = N(cfg.taxas_apps.appgas) || 10;
+                        taxasApps.precogas = N(cfg.taxas_apps.precogas) || 8.40;
                     }
                 }
             } catch(e) { console.warn('Sem configurações salvas:', e); }
-            // Preencher inputs de custos
-            document.getElementById('inputValorCompraGas').value = custosPadrao.gas13.toFixed(2);
-            document.getElementById('inputValorCompraP45').value = custosPadrao.p45.toFixed(2);
-            document.getElementById('inputValorCompraVazGas').value = custosPadrao.vazGas.toFixed(2);
-            document.getElementById('inputValorCompraAgua').value = custosPadrao.agua.toFixed(2);
-            document.getElementById('inputValorCompraVazAgua').value = custosPadrao.vazAgua.toFixed(2);
+
+            // Fallback do localStorage
+            if (localStorage.getItem('valor_compra_gas')) custosPadrao.gas13 = N(localStorage.getItem('valor_compra_gas'));
+            if (localStorage.getItem('valor_compra_p45')) custosPadrao.p45 = N(localStorage.getItem('valor_compra_p45'));
+            if (localStorage.getItem('valor_compra_vaz_gas')) custosPadrao.vazGas = N(localStorage.getItem('valor_compra_vaz_gas'));
+            if (localStorage.getItem('valor_compra_agua')) custosPadrao.agua = N(localStorage.getItem('valor_compra_agua'));
+            if (localStorage.getItem('valor_compra_vaz_agua')) custosPadrao.vazAgua = N(localStorage.getItem('valor_compra_vaz_agua'));
+
+            // Preencher inputs de custos formatados
+            document.getElementById('inputValorCompraGas').value = fmtInput(custosPadrao.gas13);
+            document.getElementById('inputValorCompraP45').value = fmtInput(custosPadrao.p45);
+            document.getElementById('inputValorCompraVazGas').value = fmtInput(custosPadrao.vazGas);
+            document.getElementById('inputValorCompraAgua').value = fmtInput(custosPadrao.agua);
+            document.getElementById('inputValorCompraVazAgua').value = fmtInput(custosPadrao.vazAgua);
             // Taxas cartão
             if (document.getElementById('inputTaxaCredito')) document.getElementById('inputTaxaCredito').value = taxasCartao.credito || '';
             if (document.getElementById('inputTaxaDebito')) document.getElementById('inputTaxaDebito').value = taxasCartao.debito || '';
@@ -3354,6 +3383,16 @@
             if (document.getElementById('inputTaxaAppGas')) document.getElementById('inputTaxaAppGas').value = taxasApps.appgas || '';
             if (document.getElementById('inputTaxaPrecoGas')) document.getElementById('inputTaxaPrecoGas').value = taxasApps.precogas || '';
         }
+
+        window.aoAlterarCustoInput = function() {
+            custosPadrao.gas13 = N(document.getElementById('inputValorCompraGas').value);
+            custosPadrao.p45 = N(document.getElementById('inputValorCompraP45').value);
+            custosPadrao.vazGas = N(document.getElementById('inputValorCompraVazGas').value);
+            custosPadrao.agua = N(document.getElementById('inputValorCompraAgua').value);
+            custosPadrao.vazAgua = N(document.getElementById('inputValorCompraVazAgua').value);
+            renderizarTabelaVendas();
+            renderizarFechamentoGas();
+        };
 
         window.recarregarTudo = async function() {
             const dataSel = getDataSelecionada();
@@ -3914,16 +3953,42 @@
 
         // ========== SAVES ==========
         window.salvarCustosCompra = async function() {
-            custosPadrao.gas13 = N(document.getElementById('inputValorCompraGas').value);
-            custosPadrao.p45 = N(document.getElementById('inputValorCompraP45').value);
-            custosPadrao.vazGas = N(document.getElementById('inputValorCompraVazGas').value);
-            custosPadrao.agua = N(document.getElementById('inputValorCompraAgua').value);
-            custosPadrao.vazAgua = N(document.getElementById('inputValorCompraVazAgua').value);
+            custosPadrao.gas13 = N(document.getElementById('inputValorCompraGas').value) || 85;
+            custosPadrao.p45 = N(document.getElementById('inputValorCompraP45').value) || 350;
+            custosPadrao.vazGas = N(document.getElementById('inputValorCompraVazGas').value) || 150;
+            custosPadrao.agua = N(document.getElementById('inputValorCompraAgua').value) || 10;
+            custosPadrao.vazAgua = N(document.getElementById('inputValorCompraVazAgua').value) || 20;
+
+            // Formatar os inputs de volta para exibição padronizada (ex: 85,00)
+            document.getElementById('inputValorCompraGas').value = fmtInput(custosPadrao.gas13);
+            document.getElementById('inputValorCompraP45').value = fmtInput(custosPadrao.p45);
+            document.getElementById('inputValorCompraVazGas').value = fmtInput(custosPadrao.vazGas);
+            document.getElementById('inputValorCompraAgua').value = fmtInput(custosPadrao.agua);
+            document.getElementById('inputValorCompraVazAgua').value = fmtInput(custosPadrao.vazAgua);
+
+            // Salvar no localStorage
+            localStorage.setItem('valor_compra_gas', custosPadrao.gas13);
+            localStorage.setItem('valor_compra_p45', custosPadrao.p45);
+            localStorage.setItem('valor_compra_vaz_gas', custosPadrao.vazGas);
+            localStorage.setItem('valor_compra_agua', custosPadrao.agua);
+            localStorage.setItem('valor_compra_vaz_agua', custosPadrao.vazAgua);
+
             try {
-                await window.firebaseUpdate('configuracoes/custos', custosPadrao);
-                showToast('Custos salvos! ✅');
-                renderizarTudo();
-            } catch(e) { alert('Erro: ' + e.message); }
+                await Promise.all([
+                    window.firebaseSet('configuracoes/valor_compra_gas', custosPadrao.gas13),
+                    window.firebaseSet('configuracoes/valor_compra_p45', custosPadrao.p45),
+                    window.firebaseSet('configuracoes/valor_compra_vaz_gas', custosPadrao.vazGas),
+                    window.firebaseSet('configuracoes/valor_compra_agua', custosPadrao.agua),
+                    window.firebaseSet('configuracoes/valor_compra_vaz_agua', custosPadrao.vazAgua),
+                    window.firebaseSet('configuracoes/custos', custosPadrao)
+                ]);
+                showToast('Custos salvos com sucesso! ✅');
+            } catch(e) {
+                console.warn('Erro ao salvar na nuvem:', e);
+                showToast('Custos salvos localmente! ✅');
+            }
+            renderizarTabelaVendas();
+            renderizarFechamentoGas();
         };
 
         window.salvarTaxasCartao = async function() {
