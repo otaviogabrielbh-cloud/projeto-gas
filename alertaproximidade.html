@@ -1,0 +1,1416 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Radar de Proximidade & Aviso Zap - Canoas Gás</title>
+
+    <link rel="icon" type="image/x-icon"
+        href="https://github.com/otaviogabrielbh-cloud/projeto-gas/raw/refs/heads/main/LOGO.ico">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Poppins:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+
+    <!-- Leaflet Map CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <style>
+        :root {
+            --bg-body: #0d1117;
+            --bg-card: #161b22;
+            --bg-card-hover: #1f242c;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --primary: #6c5ce7;
+            --primary-hover: #5b4cc4;
+            --accent-green: #25d366;
+            --accent-green-dark: #128c7e;
+            --accent-yellow: #f1c40f;
+            --accent-red: #ff4757;
+            --accent-blue: #0984e3;
+            --text-main: #f0f6fc;
+            --text-muted: #8b949e;
+            --radius-lg: 16px;
+            --radius-md: 12px;
+            --radius-sm: 8px;
+            --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        /* Topbar */
+        .topbar {
+            background: rgba(22, 27, 34, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand img {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            object-fit: cover;
+        }
+
+        .brand-text h1 {
+            font-size: 18px;
+            font-weight: 800;
+            letter-spacing: -0.3px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .brand-text span {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .stats-strip {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .stat-badge {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .stat-badge.online {
+            color: #55efc4;
+            border-color: rgba(85, 239, 196, 0.25);
+        }
+
+        .stat-badge.em-rota {
+            color: #ffeaa7;
+            border-color: rgba(255, 234, 167, 0.25);
+        }
+
+        .stat-badge.avisados {
+            color: #74b9ff;
+            border-color: rgba(116, 185, 255, 0.25);
+        }
+
+        .stat-badge.raio {
+            color: #a29bfe;
+            border-color: rgba(162, 155, 254, 0.25);
+        }
+
+        .top-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-action {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 8px 16px;
+            border-radius: var(--radius-md);
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            text-decoration: none;
+        }
+
+        .btn-action:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-1px);
+        }
+
+        .btn-action.btn-cfg {
+            background: linear-gradient(135deg, rgba(108, 92, 231, 0.25), rgba(108, 92, 231, 0.1));
+            border-color: rgba(108, 92, 231, 0.4);
+            color: #a29bfe;
+        }
+
+        /* Layout Grid */
+        .main-container {
+            display: grid;
+            grid-template-columns: 460px 1fr;
+            gap: 20px;
+            padding: 20px;
+            flex: 1;
+        }
+
+        /* Coluna Esquerda: Radar */
+        .radar-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            max-height: calc(100vh - 110px);
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .radar-panel::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .radar-panel::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+        }
+
+        .panel-header {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .panel-header h2 {
+            font-size: 15px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Cards de Pedidos em Rota */
+        .cards-list {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .order-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            transition: all 0.25s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .order-card:hover {
+            border-color: rgba(255, 255, 255, 0.2);
+            background: var(--bg-card-hover);
+        }
+
+        /* Card quando o entregador entra no raio (<500m) */
+        .order-card.proximo {
+            border-color: var(--accent-green) !important;
+            box-shadow: 0 0 25px rgba(37, 211, 102, 0.25), inset 0 0 15px rgba(37, 211, 102, 0.05);
+            animation: pulse-border 2s infinite;
+        }
+
+        @keyframes pulse-border {
+
+            0%,
+            100% {
+                border-color: rgba(37, 211, 102, 0.9);
+                box-shadow: 0 0 20px rgba(37, 211, 102, 0.3);
+            }
+
+            50% {
+                border-color: rgba(37, 211, 102, 0.4);
+                box-shadow: 0 0 10px rgba(37, 211, 102, 0.15);
+            }
+        }
+
+        .card-top {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .card-customer {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .customer-name {
+            font-size: 16px;
+            font-weight: 700;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .customer-phone {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .customer-phone:hover {
+            color: var(--accent-green);
+        }
+
+        .deliverer-pill {
+            background: rgba(108, 92, 231, 0.15);
+            border: 1px solid rgba(108, 92, 231, 0.35);
+            color: #a29bfe;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .card-address {
+            font-size: 13px;
+            color: #c9d1d9;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: var(--radius-sm);
+            padding: 8px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Medidor de Distância */
+        .proximity-gauge {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: var(--radius-md);
+            padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .gauge-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .gauge-distance {
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: baseline;
+            gap: 5px;
+        }
+
+        .gauge-distance.far {
+            color: #ffeaa7;
+        }
+
+        .gauge-distance.near {
+            color: #2ecc71;
+            text-shadow: 0 0 10px rgba(46, 204, 113, 0.5);
+        }
+
+        .gauge-distance.unknown {
+            color: var(--text-muted);
+            font-size: 15px;
+        }
+
+        .gauge-status {
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .gauge-status.status-far {
+            background: rgba(241, 196, 15, 0.15);
+            color: #f1c40f;
+            border: 1px solid rgba(241, 196, 15, 0.3);
+        }
+
+        .gauge-status.status-near {
+            background: rgba(37, 211, 102, 0.2);
+            color: #25d366;
+            border: 1px solid rgba(37, 211, 102, 0.4);
+            animation: pulse-badge 1.5s infinite;
+        }
+
+        @keyframes pulse-badge {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.05);
+            }
+        }
+
+        .proximity-progress-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 6px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #f1c40f, #2ecc71);
+            border-radius: 6px;
+            transition: width 0.4s ease;
+        }
+
+        .progress-fill.full {
+            background: #2ecc71;
+            box-shadow: 0 0 10px #2ecc71;
+        }
+
+        /* Botão de Disparo WhatsApp */
+        .btn-whatsapp-send {
+            width: 100%;
+            padding: 12px;
+            border-radius: var(--radius-md);
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }
+
+        .btn-whatsapp-send.ready {
+            background: linear-gradient(135deg, #25d366 0%, #128c7e 100%);
+            color: #ffffff;
+            box-shadow: 0 4px 15px rgba(37, 211, 102, 0.35);
+        }
+
+        .btn-whatsapp-send.ready:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(37, 211, 102, 0.5);
+        }
+
+        .btn-whatsapp-send.sent {
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text-muted);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            cursor: default;
+        }
+
+        .btn-whatsapp-send.disabled {
+            background: rgba(255, 255, 255, 0.04);
+            color: rgba(255, 255, 255, 0.3);
+            cursor: not-allowed;
+        }
+
+        .btn-re-send {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 11px;
+            cursor: pointer;
+            text-decoration: underline;
+            margin-top: 4px;
+            align-self: center;
+        }
+
+        .btn-re-send:hover {
+            color: var(--text-main);
+        }
+
+        /* Empty State */
+        .empty-state {
+            background: var(--bg-card);
+            border: 1px dashed var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 40px 20px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-muted);
+        }
+
+        .empty-state .icon {
+            font-size: 42px;
+            opacity: 0.8;
+        }
+
+        .empty-state h3 {
+            font-size: 16px;
+            color: var(--text-main);
+        }
+
+        .empty-state p {
+            font-size: 13px;
+            max-width: 320px;
+            line-height: 1.5;
+        }
+
+        /* Coluna Direita: Mapa e Histórico */
+        .map-section {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        #mapContainer {
+            width: 100%;
+            height: 520px;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            position: relative;
+        }
+
+        /* Tabela de Histórico de Envios */
+        .history-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 18px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .history-card h3 {
+            font-size: 15px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        /* Barra de Filtro do Histórico */
+        .history-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            padding-bottom: 12px;
+        }
+
+        .history-title-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .history-filter-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .btn-group-periodo {
+            display: flex;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 3px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-color);
+            gap: 3px;
+        }
+
+        .btn-filtro-periodo {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 11px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-filtro-periodo:hover {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .btn-filtro-periodo.active {
+            background: var(--accent-color);
+            color: #ffffff;
+            box-shadow: 0 2px 8px rgba(108, 92, 231, 0.4);
+        }
+
+        .input-data-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 3px 8px;
+            font-size: 12px;
+        }
+
+        .input-filtro-data {
+            background: transparent;
+            border: none;
+            color: var(--text-main);
+            font-size: 12px;
+            font-family: inherit;
+            outline: none;
+            cursor: pointer;
+            color-scheme: dark;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+        }
+
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .history-table th {
+            text-align: left;
+            padding: 10px;
+            color: var(--text-muted);
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .history-table td {
+            padding: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .history-table tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        /* Modal de Configurações */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            padding: 20px;
+        }
+
+        .modal-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            width: 100%;
+            max-width: 580px;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 12px;
+        }
+
+        .modal-header h3 {
+            font-size: 18px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-close-modal {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 22px;
+            cursor: pointer;
+        }
+
+        .btn-close-modal:hover {
+            color: #fff;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-group label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #c9d1d9;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .form-control {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            color: #fff;
+            padding: 10px 14px;
+            border-radius: var(--radius-md);
+            font-family: inherit;
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .form-control:focus {
+            border-color: var(--primary);
+        }
+
+        textarea.form-control {
+            min-height: 95px;
+            resize: vertical;
+            line-height: 1.4;
+        }
+
+        .slider-row {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .slider-row input[type="range"] {
+            flex: 1;
+            accent-color: var(--primary);
+        }
+
+        .slider-val {
+            font-weight: 700;
+            color: var(--primary);
+            min-width: 65px;
+            font-size: 15px;
+        }
+
+        .tag-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 4px;
+        }
+
+        .chip {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #a29bfe;
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 12px;
+            cursor: pointer;
+        }
+
+        .chip:hover {
+            background: rgba(108, 92, 231, 0.2);
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            border-top: 1px solid var(--border-color);
+            padding-top: 14px;
+        }
+
+        .btn-salvar {
+            background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: var(--radius-md);
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        /* Estilos do Gerenciador de Crachás Virtuais */
+        .modal-box-cracha {
+            max-width: 760px;
+            width: 95%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .cracha-form-card {
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+        .cracha-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        @media (max-width: 650px) {
+            .cracha-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .cracha-photo-picker {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1.5px dashed rgba(255, 255, 255, 0.15);
+            padding: 12px;
+            border-radius: var(--radius-md);
+            margin-bottom: 14px;
+        }
+
+        .cracha-preview-thumb {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--primary);
+            background: #161b22;
+            flex-shrink: 0;
+        }
+
+        .cracha-cards-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 12px;
+            max-height: 280px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .cracha-item-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .cracha-item-card:hover {
+            border-color: rgba(108, 92, 231, 0.5);
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .cracha-item-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .cracha-item-thumb {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #00cec9;
+            background: #0f172a;
+        }
+
+        .cracha-item-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .cracha-item-nome {
+            font-weight: 700;
+            font-size: 14px;
+            color: #fff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .cracha-item-sub {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .cracha-sec-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(0, 184, 148, 0.15);
+            border: 1px solid rgba(0, 184, 148, 0.35);
+            color: #00cec9;
+            font-family: monospace;
+            font-size: 12px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 6px;
+        }
+
+        .cracha-item-actions {
+            display: flex;
+            gap: 6px;
+            justify-content: flex-end;
+            margin-top: 4px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        /* Toast de Notificação */
+        #toastContainer {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 9999;
+        }
+
+        .toast-msg {
+            background: rgba(22, 27, 34, 0.95);
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--border-color);
+            color: white;
+            padding: 12px 18px;
+            border-radius: var(--radius-md);
+            font-size: 13px;
+            font-weight: 600;
+            box-shadow: var(--shadow);
+            animation: slide-in 0.25s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        @keyframes slide-in {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* Leaflet custom pins */
+        .moto-marker-pin {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            background: #0984e3;
+            color: white;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+            font-size: 16px;
+        }
+
+        .client-marker-pin {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+            background: #e74c3c;
+            color: white;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+            font-size: 14px;
+        }
+
+        @media (max-width: 980px) {
+            .main-container {
+                grid-template-columns: 1fr;
+            }
+
+            .radar-panel {
+                max-height: none;
+            }
+
+            #mapContainer {
+                height: 380px;
+            }
+        }
+    </style>
+    <!-- VPS Socket.IO & Adapter (Primeiros Scripts) -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="js/vps-adapter.js"></script>
+</head>
+
+<body>
+    <!-- Topbar -->
+    <header class="topbar">
+        <div class="brand">
+            <img src="logo.png" alt="Canoas Gás"
+                onerror="this.src='https://github.com/otaviogabrielbh-cloud/projeto-gas/raw/refs/heads/main/logo.png'">
+            <div class="brand-text">
+                <h1>📡 Radar de Proximidade <span>Canoas Gás</span></h1>
+                <span id="txtStatusConexao">🟢 Conectado ao Firebase</span>
+            </div>
+        </div>
+
+        <div class="stats-strip">
+            <div class="stat-badge online" id="statBadgeZap" style="background:rgba(46,204,113,0.15); border:1px solid rgba(46,204,113,0.4); color:#2ecc71;" title="Status do Servidor WhatsApp Local">
+                <span>💬</span> <span id="txtStatusZap">WhatsApp: Verificando...</span>
+            </div>
+            <div class="stat-badge" id="statBadgeModoEnvio" onclick="window.alternarModoEnvioRapido()" style="cursor:pointer; user-select:none; transition: all 0.2s; background:rgba(0,206,201,0.18); border:1px solid rgba(0,206,201,0.5); color:#00cec9; font-weight:700;" title="Clique para alternar entre Envio Automático e Manual">
+                <span id="iconModoEnvio">⚡</span> <span id="txtModoEnvio">Auto-Envio: ATIVO</span>
+            </div>
+            <div class="stat-badge online" title="Entregadores Online">
+                <span>🛵</span> <span id="statEntregadoresOnline">0 Online</span>
+            </div>
+            <div class="stat-badge em-rota" title="Pedidos com entrega iniciada (Em Rota)">
+                <span>🚀</span> <span id="statPedidosEmRota">0 Em Rota</span>
+            </div>
+            <div class="stat-badge avisados" title="Avisos enviados hoje">
+                <span>💬</span> <span id="statAvisosHoje">0 Avisos</span>
+            </div>
+            <div class="stat-badge raio" title="Raio de disparo configurado">
+                <span>🎯</span> <span id="statRaioDisplay">500m</span>
+            </div>
+        </div>
+
+        <div class="top-actions">
+            <button class="btn-action"
+                style="background: linear-gradient(135deg, #6c5ce7, #8e44ad); color:white; border-color: rgba(142,68,173,0.4);"
+                onclick="abrirModalCrachas()" title="Gerenciar Crachás Virtuais dos Entregadores">
+                <span>🪪</span> <span>Crachás (<span id="contagemCrachasTop">0</span>)</span>
+            </button>
+            <button class="btn-action btn-cfg" onclick="abrirModalConfig()">
+                <span>⚙️</span> <span>Configurações</span>
+            </button>
+            <a href="mapadeentregas.html" class="btn-action">
+                <span>🗺️</span> <span>Mapa Geral</span>
+            </a>
+            <a href="index.html" class="btn-action">
+                <span>⬅️</span> <span>Painel</span>
+            </a>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="main-container">
+        <!-- Coluna Esquerda: Lista de Pedidos em Rota / Radar -->
+        <section class="radar-panel">
+            <div class="panel-header">
+                <h2><span>🎯</span> Pedidos em Rota Monitorados (<span id="contagemRadar">0</span>)</h2>
+                <small style="color:var(--text-muted); font-size:11px;">Atualizado via GPS em tempo real</small>
+            </div>
+
+            <!-- Lista de Cards -->
+            <div class="cards-list" id="cardsContainer">
+                <div class="empty-state" id="radarEmptyState">
+                    <div class="icon">🛵💨</div>
+                    <h3>Nenhum pedido em rota no momento</h3>
+                    <p>Assim que um entregador clicar em <strong>"Iniciar Entrega"</strong> no app, o cliente aparecerá
+                        aqui no radar com a distância ao vivo.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Coluna Direita: Mapa Interativo e Histórico -->
+        <section class="map-section">
+            <!-- Mapa Leaflet -->
+            <div id="mapContainer"></div>
+
+            <!-- Histórico de Envios com Filtro de Data -->
+            <div class="history-card">
+                <div class="history-header">
+                    <div class="history-title-group">
+                        <h3 style="margin:0; font-size:15px; font-weight:700;">
+                            <span>📜 Histórico de Avisos de Proximidade</span>
+                            <span id="lblDataHistoricoAtiva" style="color:#00cec9; font-size:13px; font-weight:600; margin-left:4px;">(Hoje)</span>
+                        </h3>
+                        <span id="contagemHistorico" style="font-size:12px; font-weight:normal; color:var(--text-muted);">0 registros</span>
+                    </div>
+
+                    <!-- Barra de Filtro de Data -->
+                    <div class="history-filter-bar">
+                        <div class="btn-group-periodo">
+                            <button type="button" class="btn-filtro-periodo active" id="btnFiltroHoje" onclick="window.filtrarHistoricoPeriodo('hoje')" title="Ver avisos enviados hoje">Hoje</button>
+                            <button type="button" class="btn-filtro-periodo" id="btnFiltroOntem" onclick="window.filtrarHistoricoPeriodo('ontem')" title="Ver avisos de ontem">Ontem</button>
+                            <button type="button" class="btn-filtro-periodo" id="btnFiltroTodos" onclick="window.filtrarHistoricoPeriodo('todos')" title="Ver todo o histórico">Todos</button>
+                        </div>
+                        <div class="input-data-wrapper" title="Escolher uma data específica">
+                            <span>📅</span>
+                            <input type="date" id="filtroDataHistorico" class="input-filtro-data" onchange="window.aoMudarDataHistorico(this.value)">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="history-table">
+                        <thead>
+                            <tr>
+                                <th>Horário</th>
+                                <th>Cliente</th>
+                                <th>Entregador</th>
+                                <th>Telefone</th>
+                                <th>Distância</th>
+                                <th>Status</th>
+                                <th>Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historicoTbody">
+                            <tr>
+                                <td colspan="7" style="text-align:center; color:var(--text-muted); padding:20px;">
+                                    Nenhum aviso de proximidade enviado hoje ainda.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal de Configurações -->
+    <div class="modal-overlay" id="modalConfig">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3><span>⚙️</span> Configurações do Radar de Proximidade</h3>
+                <button class="btn-close-modal" onclick="fecharModalConfig()">&times;</button>
+            </div>
+
+            <!-- Atalho para Gerenciar Crachás -->
+            <div
+                style="background: linear-gradient(135deg, rgba(108, 92, 231, 0.15) 0%, rgba(142, 68, 173, 0.15) 100%); border: 1px solid rgba(108, 92, 231, 0.35); border-radius: var(--radius-md); padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px;">
+                <div>
+                    <strong style="color: #a29bfe; font-size: 13px; display: block;">🪪 Crachá Virtual de
+                        Segurança</strong>
+                    <small style="color: var(--text-muted); font-size: 11px;">Cadastre foto, matrícula e código de
+                        segurança dos entregadores.</small>
+                </div>
+                <button type="button" class="btn-action"
+                    style="background: #6c5ce7; color: white; font-size: 12px; padding: 6px 12px; white-space: nowrap;"
+                    onclick="abrirModalCrachas()">
+                    <span>🪪</span> Gerenciar Crachás
+                </button>
+            </div>
+
+            <!-- Raio de Proximidade -->
+            <div class="form-group">
+                <label>
+                    <span>Raio de Proximidade (Geofence):</span>
+                    <span class="slider-val" id="lblRaioMetros">500 metros</span>
+                </label>
+                <div class="slider-row">
+                    <input type="range" id="sliderRaio" min="200" max="2000" step="50" value="500"
+                        oninput="atualizarLabelRaio(this.value)">
+                </div>
+                <small style="color:var(--text-muted); font-size:11px;">Distância em linha reta que dispara o aviso de
+                    que o entregador está chegando.</small>
+            </div>
+
+            <!-- Alarme Sonoro -->
+            <div class="form-group" style="flex-direction:row; align-items:center; justify-content:space-between;">
+                <div>
+                    <label style="margin-bottom:2px;">Tocar Som de Alerta ao Entrar no Raio</label>
+                    <small style="color:var(--text-muted); font-size:11px;">Alerta sonoro na central quando o entregador
+                        cruzar o raio.</small>
+                </div>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <button type="button" class="btn-action" style="padding:4px 10px; font-size:11px;"
+                        onclick="tocarSinoAlerta(true)">🔔 Testar Som</button>
+                    <input type="checkbox" id="chkAlarmeSonoro" checked
+                        style="width:18px; height:18px; accent-color:var(--primary); cursor:pointer;">
+                </div>
+            </div>
+
+            <!-- Opção de Anexar Foto do Crachá Oficial -->
+            <div
+                style="display:flex; justify-content:space-between; align-items:center; background: rgba(108,92,231,0.12); border: 1px solid rgba(108,92,231,0.35); border-radius:10px; padding:10px 14px; margin-bottom:12px;">
+                <div>
+                    <label
+                        style="margin-bottom:2px; color:#a29bfe; font-weight:700; display:flex; align-items:center; gap:6px; cursor:pointer;"
+                        onclick="document.getElementById('chkEnviarImagemCracha').click()">
+                        <span>📸</span> Enviar Imagem Oficial do Crachá
+                    </label>
+                    <small style="color:var(--text-muted); font-size:11px;">Gera a imagem oficial do crachá do
+                        entregador e anexa automaticamente no WhatsApp (o texto abaixo irá como legenda).</small>
+                </div>
+                <input type="checkbox" id="chkEnviarImagemCracha" checked
+                    style="width:18px; height:18px; accent-color:var(--primary); cursor:pointer;">
+            </div>
+
+            <!-- Template da Mensagem WhatsApp -->
+            <div class="form-group">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                    <label style="margin:0;">Template da Mensagem (Legenda da Foto no WhatsApp):</label>
+                    <button type="button" class="btn-action" style="font-size:11px; padding:4px 10px; background:rgba(0,206,201,0.18); color:#00cec9; border-color:rgba(0,206,201,0.4); font-weight:700;" onclick="testarMensagemProximidade()">🧪 Testar Envio</button>
+                </div>
+                <textarea id="txtMensagemTemplate" class="form-control" rows="4">Olá, {cliente}! 🛵💨
+Seu pedido da Canoas Gás está chegando!
+Nosso entregador {entregador} está a cerca de {distancia} do seu endereço ({endereco}).
+
+🔒 Código de Confirmação: {codigo_seguranca}
+
+Por favor, deixe o portão ou acesso livre para receber o pedido. Muito obrigado!</textarea>
+                <div class="tag-chips">
+                    <span class="chip"
+                        style="background: rgba(0,184,148,0.22); border-color: rgba(0,184,148,0.45); color: #00cec9; font-weight: 700;">📸
+                        + Foto do Crachá (Anexo Automático)</span>
+                    <span class="chip" onclick="inserirTag('{cliente}')">+ {cliente}</span>
+                    <span class="chip" onclick="inserirTag('{entregador}')">+ {entregador}</span>
+                    <span class="chip" onclick="inserirTag('{distancia}')">+ {distancia}</span>
+                    <span class="chip" onclick="inserirTag('{endereco}')">+ {endereco}</span>
+                    <span class="chip" onclick="inserirTag('{codigo_seguranca}')"
+                        style="background: rgba(0,184,148,0.2); border-color: rgba(0,184,148,0.4); color: #00cec9;">🔒 +
+                        {codigo_seguranca}</span>
+                    <span class="chip" onclick="inserirTag('{matricula}')">📋 + {matricula}</span>
+                    <span class="chip" onclick="inserirTag('{link_cracha}')"
+                        style="background: rgba(108,92,231,0.25); border-color: rgba(108,92,231,0.45); color: #a29bfe;">🪪
+                        + {link_cracha} (Link Online)</span>
+                </div>
+            </div>
+
+            <!-- Integração com API de WhatsApp (Opcional) -->
+            <div class="form-group" style="border-top:1px solid var(--border-color); padding-top:14px;">
+                <label style="color:#a29bfe;">🤖 Envio 100% Automático via API (Opcional):</label>
+                <small style="color:var(--text-muted); font-size:11px; margin-bottom:8px;">Se você tiver Evolution API,
+                    Z-API ou webhook, preencha abaixo para disparo silencioso e automático. Se deixar vazio, funcionará
+                    no modo 1-clique manual.</small>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+                    <div>
+                        <label style="font-size:11px;">Modo de Envio:</label>
+                        <select id="selModoEnvio" class="form-control" onchange="alternarCamposApi()">
+                            <option value="automatico" selected>Automático (Disparo pelo Servidor Local / API)</option>
+                            <option value="manual">Manual (1-Clique via WhatsApp Web)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size:11px;">Tipo de API:</label>
+                        <select id="selTipoApi" class="form-control" onchange="alternarCamposApi()">
+                            <option value="local" selected>Servidor Local (Node.js)</option>
+                            <option value="evolution">Evolution API</option>
+                            <option value="zapi">Z-API</option>
+                            <option value="custom">Webhook Genérico (POST)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="camposApiContainer" style="display:none; flex-direction:column; gap:8px;">
+                    <input type="text" id="txtApiUrl" class="form-control"
+                        placeholder="URL da API (ex: https://api.exemplo.com/message/sendText)">
+                    <input type="password" id="txtApiKey" class="form-control"
+                        placeholder="Token / API Key / Chave Secreta">
+                    <input type="text" id="txtApiInstancia" class="form-control"
+                        placeholder="Nome da Instância (se aplicável)">
+                </div>
+
+                <div id="qrCodeContainer"
+                    style="display:none; flex-direction:column; align-items:center; margin-top: 15px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                    <h4 style="margin:0 0 10px 0; font-size:12px; color:var(--accent-green);">QR Code Servidor Local
+                    </h4>
+                    <img id="imgQrCode" src=""
+                        style="width:150px; height:150px; display:none; background:#fff; padding:5px; border-radius:5px;" />
+                    <p id="txtStatusLocal" style="font-size:11px; margin-top:8px;">Verificando status...</p>
+                    <button type="button" class="btn-action" style="font-size:11px; padding:4px 8px; margin-top:5px;"
+                        onclick="verificarStatusLocal()">Atualizar Status</button>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn-action" onclick="fecharModalConfig()">Cancelar</button>
+                <button type="button" class="btn-salvar" onclick="salvarConfiguracoes()">Salvar Configurações</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Gerenciador de Crachás Virtuais -->
+    <div class="modal-overlay" id="modalCrachas" style="display: none;">
+        <div class="modal-box modal-box-cracha">
+            <div class="modal-header">
+                <h3><span>🪪</span> Crachás Virtuais dos Entregadores</h3>
+                <button class="btn-close-modal" onclick="fecharModalCrachas()">&times;</button>
+            </div>
+
+            <!-- Formulário de Cadastro / Edição -->
+            <div class="cracha-form-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h4 style="font-size: 14px; font-weight: 700; color: #a29bfe;" id="lblTituloFormCracha">➕ Cadastrar
+                        / Editar Crachá</h4>
+                    <button type="button" class="btn-action" style="font-size: 11px; padding: 4px 10px;"
+                        onclick="limparFormCracha()">Limpar / Novo</button>
+                </div>
+
+                <input type="hidden" id="txtIdCrachaEdicao">
+
+                <div class="cracha-grid">
+                    <div class="form-group">
+                        <label>Colaborador / Entregador:</label>
+                        <select id="selEntregadorCracha" class="form-control"
+                            onchange="aoSelecionarEntregadorCracha(this.value)">
+                            <option value="">-- Selecione ou digite abaixo --</option>
+                        </select>
+                        <input type="text" id="txtNomeCracha" class="form-control"
+                            placeholder="Ou digite o nome completo..." style="margin-top: 5px;">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Telefone (WhatsApp):</label>
+                        <input type="tel" id="txtTelefoneCracha" class="form-control" placeholder="(31) 99999-9999"
+                            maxlength="15" oninput="mascararTelefone(this)">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Número de Matrícula:</label>
+                        <input type="text" id="txtMatriculaCracha" class="form-control" placeholder="Ex: MAT-0012">
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            <span>Código de Segurança (4 dígitos):</span>
+                            <button type="button" class="btn-action" style="font-size: 10px; padding: 2px 6px;"
+                                onclick="gerarCodigoSegurancaAleatorio()">🎲 Gerar</button>
+                        </label>
+                        <input type="text" id="txtCodigoSegurancaCracha" class="form-control" placeholder="Ex: 8429"
+                            maxlength="6"
+                            style="font-family: monospace; font-size: 15px; font-weight: 700; letter-spacing: 2px; color: #00cec9;">
+                    </div>
+                </div>
+
+                <!-- Foto do Colaborador -->
+                <div class="cracha-photo-picker">
+                    <img id="previewFotoCracha" src="logo.png" class="cracha-preview-thumb" alt="Prévia">
+                    <div style="flex: 1;">
+                        <label
+                            style="font-size: 12px; font-weight: 600; color: #cbd5e1; display: block; margin-bottom: 4px;">Foto
+                            Oficial do Crachá:</label>
+                        <input type="file" id="fileFotoCracha" accept="image/*" class="form-control"
+                            style="font-size: 11px; padding: 6px;" onchange="aoSelecionarFotoCracha(event)">
+                        <small style="font-size: 10px; color: var(--text-muted); display: block; margin-top: 3px;">A
+                            foto é compactada automaticamente em alta resolução leve.</small>
+                    </div>
+                    <button type="button" class="btn-action"
+                        style="font-size: 11px; padding: 6px 10px; background: rgba(255,71,87,0.2); color: #ff7675; border-color: rgba(255,71,87,0.3);"
+                        onclick="removerFotoCracha()" title="Remover Foto">🗑️</button>
+                </div>
+
+                <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                    <button type="button" class="btn-action" id="btnPreviewCracha"
+                        style="font-size: 12px; display: none;" onclick="visualizarCrachaAtual()">👁️ Ver Crachá
+                        Online</button>
+                    <button type="button" class="btn-salvar" style="font-size: 13px; padding: 8px 18px;"
+                        onclick="salvarCracha()">💾 Salvar Crachá</button>
+                </div>
+            </div>
+
+            <!-- Lista de Crachás Existentes -->
+            <div>
+                <h4 style="font-size: 13px; font-weight: 700; color: #c9d1d9; margin-bottom: 8px;">
+                    Crachás Cadastrados (<span id="contagemCrachasLista">0</span>)
+                </h4>
+                <div class="cracha-cards-container" id="listaCrachasContainer">
+                    <div
+                        style="text-align: center; padding: 25px; color: var(--text-muted); font-size: 13px; grid-column: 1 / -1;">
+                        Nenhum crachá cadastrado ainda. Preencha o formulário acima.
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer" style="margin-top: 15px;">
+                <button type="button" class="btn-action" onclick="fecharModalCrachas()">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Container de Toasts -->
+    <div id="toastContainer"></div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Logo Oficial Canoas Gás em Base64 para Canvas Limpo (livre de taint no file://) -->
+    <script src="js/logo-base64.js"></script>
+    <script src="js/logo-png-base64.js"></script>
+
+    <!-- Firebase SDK (Módulos) -->
+    
+</body>
+
+</html>

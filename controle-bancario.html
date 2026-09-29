@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle Bancário - Canoas Gás</title>
+    <link rel="icon" type="image/x-icon"
+        href="https://github.com/otaviogabrielbh-cloud/projeto-gas/raw/refs/heads/main/LOGO.ico">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Poppins:wght@300;400;600&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --primary: #0984e3;
+            --primary-dark: #0770c2;
+            --secondary: #00cec9;
+            --danger: #ef4444;
+            --success: #2ecc71;
+            --warning: #f39c12;
+            --text-dark: #1e293b;
+            --text-light: #64748b;
+            --bg-light: #f0f4f8;
+            --bg-card: #ffffff;
+            --border: #dde3ec;
+            --shadow: 0 4px 24px rgba(9,132,227,0.08);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg-light);
+            color: var(--text-dark);
+            min-height: 100vh;
+        }
+
+        /* ===== HEADER ===== */
+        .cb-topbar {
+            background: linear-gradient(135deg, #0984e3 0%, #00cec9 100%);
+            padding: 18px 28px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 4px 20px rgba(9,132,227,0.25);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .cb-topbar h1 {
+            color: white;
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .cb-topbar h1 span {
+            background: rgba(255,255,255,0.2);
+            border-radius: 8px;
+            padding: 3px 10px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .btn-voltar {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 700;
+            border: 1px solid rgba(255,255,255,0.3);
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-voltar:hover {
+            background: rgba(255,255,255,0.35);
+        }
+
+        /* ===== CONTAINER ===== */
+        .cb-container {
+            max-width: 1800px;
+            margin: 0 auto;
+            padding: 24px 20px;
+        }
+
+        /* ===== FILTRO ===== */
+        .cb-filter-card {
+            background: var(--bg-card);
+            border-radius: 18px;
+            padding: 20px 24px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            margin-bottom: 24px;
+            display: flex;
+            align-items: flex-end;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .cb-filter-card .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .cb-filter-card label {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--text-light);
+            letter-spacing: 0.5px;
+        }
+
+        .cb-filter-card input[type="date"] {
+            background: var(--bg-light);
+            border: 1.5px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 14px;
+            color: var(--text-dark);
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .cb-filter-card input[type="date"]:focus {
+            border-color: var(--primary);
+        }
+
+        .btn-filtrar {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            border: none;
+            padding: 11px 26px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 14px rgba(9,132,227,0.3);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-filtrar:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(9,132,227,0.4);
+        }
+
+        .btn-excel-cb {
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+            color: white;
+            border: none;
+            padding: 11px 22px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-excel-cb:hover { transform: translateY(-2px); }
+
+        .btn-salvar-cb {
+            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+            color: white;
+            border: none;
+            padding: 11px 22px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 14px rgba(243,156,18,0.3);
+        }
+
+        .btn-salvar-cb:hover { transform: translateY(-2px); }
+
+        /* ===== LOADING ===== */
+        .cb-loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-light);
+            font-size: 16px;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--border);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px auto;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ===== TABLE WRAPPER ===== */
+        .cb-table-wrapper {
+            background: var(--bg-card);
+            border-radius: 18px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            overflow-x: auto;
+            margin-bottom: 24px;
+        }
+
+        /* ===== TABLE ===== */
+        .cb-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 1500px;
+            font-size: 13px;
+        }
+
+        .cb-table thead th {
+            background: linear-gradient(135deg, #0984e3 0%, #00cec9 100%);
+            color: white;
+            padding: 13px 10px;
+            text-align: center;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            white-space: nowrap;
+            position: sticky;
+            top: 0;
+        }
+
+        .cb-table thead th:first-child {
+            border-radius: 18px 0 0 0;
+        }
+        .cb-table thead th:last-child {
+            border-radius: 0 18px 0 0;
+        }
+
+        .cb-table tbody tr {
+            transition: background 0.15s;
+        }
+
+        .cb-table tbody tr:nth-child(even) {
+            background: #f8fbff;
+        }
+
+        .cb-table tbody tr:hover {
+            background: #e8f4fd;
+        }
+
+        .cb-table tbody tr.row-total {
+            background: linear-gradient(135deg, #0984e320 0%, #00cec920 100%) !important;
+            font-weight: 800;
+            border-top: 2px solid #0984e350;
+        }
+
+        .cb-table td {
+            padding: 9px 8px;
+            text-align: center;
+            border-bottom: 1px solid #edf2f7;
+            vertical-align: middle;
+        }
+
+        .td-data {
+            font-weight: 700;
+            color: var(--primary);
+            white-space: nowrap;
+            font-size: 12px;
+        }
+
+        /* ===== INPUTS INLINE NA TABELA ===== */
+        .cb-input {
+            background: transparent;
+            border: 1.5px solid transparent;
+            border-radius: 7px;
+            padding: 5px 8px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 13px;
+            color: var(--text-dark);
+            width: 100%;
+            text-align: center;
+            transition: border-color 0.2s, background 0.2s;
+            min-width: 70px;
+        }
+
+        .cb-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: #e8f4fd;
+        }
+
+        .cb-input:hover {
+            border-color: #b8d4f0;
+            background: #f0f8ff;
+        }
+
+        .cb-input.input-banco {
+            min-width: 110px;
+            text-align: left;
+        }
+
+        .cb-input.input-pendencia {
+            min-width: 130px;
+            text-align: left;
+        }
+
+        .cb-input.input-num {
+            min-width: 65px;
+        }
+
+        /* ===== VALORES AUTOMATICOS ===== */
+        .val-auto {
+            font-weight: 700;
+            color: var(--text-dark);
+            white-space: nowrap;
+        }
+
+        .val-auto.positivo { color: #16a34a; }
+        .val-auto.negativo { color: #ef4444; }
+        .val-auto.azul     { color: #0984e3; }
+        .val-auto.laranja  { color: #f39c12; }
+        .val-auto.roxo     { color: #8b5cf6; }
+        .val-auto.ciano    { color: #00cec9; }
+        .val-auto.verde    { color: #2ecc71; }
+
+        /* ===== LINHA TOTAL ===== */
+        .cb-table tbody tr.row-total td {
+            font-weight: 800;
+            font-size: 13px;
+            color: var(--primary-dark);
+        }
+
+        /* ===== BADGE COLUNAS ===== */
+        .th-group-vendas { background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%) !important; }
+        .th-group-gastos { background: linear-gradient(135deg, #ef4444 0%, #f97316 100%) !important; }
+        .th-group-botijao-inicio { background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%) !important; }
+        .th-group-recebidos { background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%) !important; }
+        .th-group-pos-recebimento { background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%) !important; }
+        .th-group-botijao-fim { background: linear-gradient(135deg, #ec4899 0%, #d946ef 100%) !important; }
+        .th-group-patio { background: linear-gradient(135deg, #64748b 0%, #475569 100%) !important; }
+        .th-group-banco { background: linear-gradient(135deg, #0984e3 0%, #00cec9 100%) !important; }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 768px) {
+            .cb-topbar h1 { font-size: 17px; }
+            .cb-filter-card { flex-direction: column; align-items: stretch; }
+            .btn-filtrar, .btn-excel-cb, .btn-salvar-cb { width: 100%; justify-content: center; }
+        }
+
+        /* ===== TOAST ===== */
+        .cb-toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
+            color: white;
+            padding: 14px 24px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 14px;
+            box-shadow: 0 8px 24px rgba(46,204,113,0.4);
+            z-index: 9999;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.3s, transform 0.3s;
+            pointer-events: none;
+        }
+
+        .cb-toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+    <!-- VPS Socket.IO & Adapter (Primeiros Scripts) -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="js/vps-adapter.js"></script>
+</head>
+
+<body>
+
+    <!-- TOAST -->
+    <div class="cb-toast" id="cbToast">✅ Dados salvos com sucesso!</div>
+
+    <!-- TOPBAR -->
+    <div class="cb-topbar">
+        <h1>🏦 Controle Bancário <span id="lblPeriodo">—</span></h1>
+        <a href="index.html" class="btn-voltar">⬅ Voltar</a>
+    </div>
+
+    <!-- CONTAINER -->
+    <div class="cb-container">
+
+        <!-- FILTROS -->
+        <div class="cb-filter-card">
+            <div class="filter-group">
+                <label>📅 Data Início</label>
+                <input type="date" id="cbDataInicio">
+            </div>
+            <div class="filter-group">
+                <label>📅 Data Fim</label>
+                <input type="date" id="cbDataFim">
+            </div>
+            <button class="btn-filtrar" onclick="gerarRelatorio()">🔍 Gerar Relatório</button>
+            <button class="btn-salvar-cb" onclick="salvarDadosManuais()">💾 Salvar Dados</button>
+            <button class="btn-excel-cb" onclick="exportarExcel()">📊 Exportar Excel</button>
+        </div>
+
+        <!-- LOADING -->
+        <div class="cb-loading" id="cbLoading" style="display:none;">
+            <div class="spinner"></div>
+            Carregando dados do Firebase...
+        </div>
+
+        <!-- TABELA -->
+        <div class="cb-table-wrapper" id="cbTableWrapper" style="display:none;">
+            <table class="cb-table" id="cbTable">
+                <thead>
+                    <tr>
+                        <th class="th-group-banco" rowspan="1">📅 Data</th>
+                        <th class="th-group-banco">🏦 Banco</th>
+                        <th class="th-group-banco">💰 Início do Dia (R$)</th>
+                        <th class="th-group-gastos">🚚 Pgto. Carga (R$)</th>
+                        <th class="th-group-gastos">💸 Outros Gastos (R$)</th>
+                        <th class="th-group-vendas">💳 Créd. + Déb. (R$)</th>
+                        <th class="th-group-vendas">📲 PIX (R$)</th>
+                        <th class="th-group-vendas">💵 Dinheiro (R$)</th>
+                        <th class="th-group-vendas">🏪 Gás do Povo (R$)</th>
+                        <th class="th-group-vendas">📱 Venda Online (R$)</th>
+                        <th class="th-group-banco">⚠️ Pendência</th>
+                        <th class="th-group-vendas">🔥 Qtd Gás Completo</th>
+                        <th class="th-group-botijao-inicio">🔴 Início dia<br>Botijão Vazio</th>
+                        <th class="th-group-botijao-inicio">🟢 Início dia<br>Botijão Cheio</th>
+                        <th class="th-group-recebidos">🚚 Gás<br>Recebidos</th>
+                        <th class="th-group-pos-recebimento">🟢 Pós Receb.<br>Botijão Cheio</th>
+                        <th class="th-group-pos-recebimento">🔴 Pós Receb.<br>Botijão Vazio</th>
+                        <th class="th-group-botijao-fim">🔴 Final do dia<br>Botijão Vazio</th>
+                        <th class="th-group-botijao-fim">🟢 Final do dia<br>Botijão Cheio</th>
+                        <th class="th-group-patio">🏭 Total do<br>Pátio</th>
+                    </tr>
+                </thead>
+                <tbody id="cbTableBody">
+                </tbody>
+            </table>
+        </div>
+
+        <div id="cbEmpty" style="display:none; text-align:center; padding:60px 20px; color:var(--text-light);">
+            <div style="font-size:48px; margin-bottom:16px;">🏦</div>
+            <p style="font-size:18px; font-weight:700;">Nenhum dado encontrado</p>
+            <p style="font-size:14px; margin-top:8px;">Selecione um período e clique em <strong>Gerar Relatório</strong>.</p>
+        </div>
+    </div>
+
+    
+</body>
+
+</html>

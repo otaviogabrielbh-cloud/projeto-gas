@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estoque Atual - Canoas Gás</title>
+    <link rel="icon" type="image/x-icon"
+        href="https://github.com/otaviogabrielbh-cloud/projeto-gas/raw/refs/heads/main/LOGO.ico">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Poppins:wght@300;400;600&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .estoque-container {
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 20px;
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .estoque-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            background: var(--bg-glass);
+            padding: 20px 30px;
+            border-radius: var(--radius-lg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-glass);
+            box-shadow: var(--shadow-glass);
+        }
+
+        .header-title h1 {
+            margin: 0;
+            font-family: var(--font-heading);
+            font-size: 24px;
+            color: var(--primary-color);
+            text-transform: uppercase;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+        }
+
+        .header-title h1 span {
+            color: var(--accent-yellow);
+        }
+
+        .btn-voltar {
+            background: white;
+            color: var(--text-color);
+            padding: 10px 20px;
+            border-radius: var(--radius-md);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 700;
+            transition: all 0.3s;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        .btn-voltar:hover {
+            background: #f8f9fa;
+            transform: translateX(-5px);
+        }
+
+        .stock-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .stock-card {
+            background: var(--bg-glass);
+            border-radius: var(--radius-lg);
+            padding: 25px;
+            border: 1px solid var(--border-glass);
+            box-shadow: var(--shadow-glass);
+            backdrop-filter: blur(12px);
+        }
+
+        .card-title {
+            font-family: var(--font-heading);
+            font-size: 18px;
+            font-weight: 800;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            padding-bottom: 12px;
+            color: var(--primary-color);
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 11px;
+            color: #636e72;
+            margin-bottom: 5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .input-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: white;
+            padding: 8px 15px;
+            border-radius: var(--radius-md);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            margin-bottom: 15px;
+        }
+
+        .input-row span {
+            font-family: var(--font-heading);
+            font-weight: 700;
+            font-size: 14px;
+            color: #636e72;
+            min-width: 70px;
+        }
+
+        .input-stock {
+            background: transparent;
+            border: none;
+            color: var(--primary-color);
+            font-family: var(--font-heading);
+            font-size: 20px;
+            font-weight: 800;
+            width: 100%;
+            text-align: right;
+            outline: none;
+        }
+
+        .total-badge {
+            margin-top: 15px;
+            background: rgba(0, 0, 0, 0.02);
+            padding: 12px;
+            border-radius: var(--radius-md);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid rgba(0, 0, 0, 0.03);
+        }
+
+        .total-label {
+            font-size: 13px;
+            color: #636e72;
+            font-weight: 600;
+        }
+
+        .total-value {
+            font-family: var(--font-heading);
+            font-size: 24px;
+            font-weight: 900;
+            color: var(--primary-color);
+        }
+
+        /* ===== QUADRO VIVO ===== */
+        .quadro-vivo {
+            margin-bottom: 30px;
+        }
+
+        .quadro-vivo-title {
+            font-family: var(--font-heading);
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #636e72;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .quadro-vivo-title::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: rgba(0, 0, 0, 0.06);
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 0;
+        }
+
+        .live-card {
+            border-radius: var(--radius-lg);
+            padding: 22px 18px;
+            text-align: center;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .live-card::before {
+            content: '';
+            position: absolute;
+            top: -20px;
+            right: -20px;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .live-card.cheios {
+            background: linear-gradient(135deg, #00b894 0%, #00cec9 100%);
+            box-shadow: 0 10px 25px rgba(0, 184, 148, 0.3);
+        }
+
+        .live-card.vazios {
+            background: linear-gradient(135deg, #636e72 0%, #2d3436 100%);
+            box-shadow: 0 10px 25px rgba(45, 52, 54, 0.3);
+        }
+
+        .live-card.vendas {
+            background: linear-gradient(135deg, #f39c12 0%, #d35400 100%);
+            box-shadow: 0 10px 25px rgba(243, 156, 18, 0.3);
+        }
+
+        .live-card.cargas {
+            background: linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%);
+            box-shadow: 0 10px 25px rgba(108, 92, 231, 0.3);
+        }
+
+        .summary-title {
+            font-family: var(--font-heading);
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 8px;
+            opacity: 0.85;
+        }
+
+        .summary-value {
+            font-family: var(--font-heading);
+            font-size: 38px;
+            font-weight: 900;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+            line-height: 1;
+        }
+
+        .summary-sub {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 6px;
+            font-weight: 600;
+        }
+
+        /* ===== SEÇÃO DE CARGA ===== */
+        .carga-card {
+            background: var(--bg-glass);
+            border-radius: var(--radius-lg);
+            padding: 25px;
+            border: 2px solid rgba(108, 92, 231, 0.2);
+            box-shadow: var(--shadow-glass);
+            backdrop-filter: blur(12px);
+            margin-bottom: 25px;
+        }
+
+        .carga-card .card-title {
+            color: #6c5ce7;
+        }
+
+        .carga-input-row {
+            display: flex;
+            gap: 12px;
+            align-items: stretch;
+        }
+
+        .carga-input-row input {
+            flex: 1;
+            background: white;
+            border: 1px solid rgba(108, 92, 231, 0.2);
+            border-radius: var(--radius-md);
+            padding: 14px 18px;
+            font-family: var(--font-heading);
+            font-size: 22px;
+            font-weight: 800;
+            color: #6c5ce7;
+            outline: none;
+            text-align: center;
+        }
+
+        .btn-carga {
+            background: linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%);
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            padding: 14px 24px;
+            font-weight: 800;
+            font-size: 13px;
+            cursor: pointer;
+            box-shadow: 0 8px 20px rgba(108, 92, 231, 0.3);
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            white-space: nowrap;
+        }
+
+        .btn-carga:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 28px rgba(108, 92, 231, 0.4);
+        }
+
+        .cargas-list {
+            margin-top: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .carga-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(108, 92, 231, 0.06);
+            border: 1px solid rgba(108, 92, 231, 0.12);
+            border-radius: var(--radius-md);
+            padding: 10px 14px;
+        }
+
+        .carga-item-info {
+            font-size: 13px;
+            font-weight: 700;
+            color: #6c5ce7;
+        }
+
+        .carga-item-hora {
+            font-size: 11px;
+            color: #b2bec3;
+        }
+
+        .btn-del-carga {
+            background: #ff4757;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 4px 10px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        /* ===== BOTÕES ===== */
+        .btn-save {
+            background: var(--primary-gradient);
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            padding: 18px 30px;
+            font-weight: 800;
+            font-size: 14px;
+            cursor: pointer;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+            transition: all 0.4s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            flex: 1;
+        }
+
+        .btn-inicio {
+            background: linear-gradient(135deg, #00b894 0%, #00cec9 100%);
+            color: white;
+        }
+
+        .btn-save:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        /* DARK MODE extra */
+        body.theme-dark .carga-card {
+            background: rgba(0, 0, 0, 0.4);
+            border-color: rgba(108, 92, 231, 0.3);
+        }
+
+        body.theme-dark .carga-input-row input {
+            background: rgba(255, 255, 255, 0.06);
+            color: #a29bfe;
+            border-color: rgba(108, 92, 231, 0.3);
+        }
+
+        body.theme-dark .carga-item {
+            background: rgba(108, 92, 231, 0.1);
+        }
+
+        @media (max-width: 768px) {
+            .summary-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        /* HISTORY TABLE */
+        .history-card {
+            background: var(--bg-glass);
+            border-radius: var(--radius-lg);
+            padding: 25px;
+            border: 1px solid var(--border-glass);
+            margin-top: 40px;
+            overflow-x: auto;
+            backdrop-filter: blur(12px);
+            box-shadow: var(--shadow-glass);
+        }
+
+        .history-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-family: var(--font-heading);
+        }
+
+        .history-table th {
+            padding: 12px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-align: center;
+            border-bottom: 2px solid rgba(0, 0, 0, 0.05);
+            color: #636e72;
+        }
+
+        .history-table td {
+            padding: 15px 10px;
+            text-align: center;
+            font-size: 14px;
+            font-weight: 600;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+            color: var(--text-color);
+        }
+
+        .col-data {
+            background: #f1f2f6;
+            color: #636e72 !important;
+            width: 120px;
+            border-radius: 8px 0 0 8px;
+        }
+
+        .col-inicio {
+            background: #e8f5e9;
+            color: #2e7d32 !important;
+        }
+
+        .col-vendas {
+            background: #fffde7;
+            color: #f9a825 !important;
+        }
+
+        .col-final {
+            background: #ffebee;
+            color: #c62828 !important;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .header-inicio {
+            background: #27ae60 !important;
+            color: white !important;
+        }
+
+        .header-vendas {
+            background: #f1c40f !important;
+            color: #1e293b !important;
+        }
+
+        .header-final {
+            background: #e74c3c !important;
+            color: white !important;
+        }
+
+        .header-data {
+            background: #475569 !important;
+            color: white !important;
+        }
+
+        /* DARK MODE SUPPORT */
+        body.theme-dark {
+            background: linear-gradient(120deg, #2d3436 0%, #1e272e 100%) !important;
+            color: #dfe6e9;
+        }
+
+        body.theme-dark .estoque-header,
+        body.theme-dark .stock-card,
+        body.theme-dark .history-card {
+            background: rgba(0, 0, 0, 0.4);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        body.theme-dark .input-row {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        body.theme-dark .input-stock {
+            color: white;
+        }
+
+        body.theme-dark .btn-voltar {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: none;
+        }
+
+        body.theme-dark .col-data {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        body.theme-dark .col-inicio {
+            background: rgba(46, 204, 113, 0.1);
+        }
+
+        body.theme-dark .col-vendas {
+            background: rgba(241, 196, 15, 0.1);
+        }
+
+        body.theme-dark .col-final {
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        body.theme-dark .total-badge {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        @media (max-width: 768px) {
+            .stock-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .estoque-header {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+                padding: 15px;
+            }
+
+            .stock-grid {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+
+            .summary-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+            }
+
+            .live-card {
+                padding: 15px 10px;
+            }
+
+            .summary-value {
+                font-size: 28px;
+            }
+
+            .carga-input-row {
+                flex-direction: column;
+            }
+
+            .carga-input-row button {
+                width: 100%;
+            }
+
+            .header-historico {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .table-wrap table {
+                font-size: 11px;
+            }
+
+            th,
+            td {
+                padding: 10px 5px;
+            }
+        }
+    </style>
+    <!-- VPS Socket.IO & Adapter (Primeiros Scripts) -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="js/vps-adapter.js"></script>
+</head>
+
+<body>
+    <div class="estoque-container">
+        <header class="estoque-header">
+            <div class="header-title">
+                <h1><span>ESTOQUE</span> ATUAL</h1>
+            </div>
+            <a href="index.html" class="btn-voltar">⬅️ Voltar</a>
+        </header>
+
+        <!-- ========= QUADRO VIVO ========= -->
+        <div class="quadro-vivo">
+            <div class="quadro-vivo-title">📊 Quadro Vivo — Atualização em Tempo Real</div>
+            <div class="summary-grid">
+                <div class="live-card cheios">
+                    <div class="summary-title">🔥 Cheios (Estoque)</div>
+                    <div class="summary-value" id="live_cheios">0</div>
+                    <div class="summary-sub">Disponíveis p/ venda</div>
+                </div>
+                <div class="live-card vazios">
+                    <div class="summary-title">⭕ Vazios (Estoque)</div>
+                    <div class="summary-value" id="live_vazios">0</div>
+                    <div class="summary-sub">Aguardando troca</div>
+                </div>
+                <div class="live-card vendas">
+                    <div class="summary-title">🛵 Vendas Hoje</div>
+                    <div class="summary-value" id="vendas_hoje_total">0</div>
+                    <div class="summary-sub">Pedidos concluídos</div>
+                </div>
+                <div class="live-card cargas">
+                    <div class="summary-title">🚛 Carga Entrada</div>
+                    <div class="summary-value" id="live_cargas">0</div>
+                    <div class="summary-sub">Cheios recebidos hoje</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========= BENCHMARK (INÍCIO DO DIA) ========= -->
+        <div class="stock-grid">
+            <div class="stock-card">
+                <div class="card-title">🚀 Estoque Inicial (Cheios)</div>
+                <div class="input-group">
+                    <label>Início: Botijão Cabeça (x3)</label>
+                    <div class="input-row">
+                        <span>CABEÇA</span>
+                        <input type="number" id="cheio_cabeca" class="input-stock" value="0" oninput="recalcular()">
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>Início: Botijão Regular</label>
+                    <div class="input-row">
+                        <span>NORMAL</span>
+                        <input type="number" id="cheio_normal" class="input-stock" value="0" oninput="recalcular()">
+                    </div>
+                </div>
+                <div class="total-badge">
+                    <span class="total-label">Subtotal Inicial (Cheios)</span>
+                    <span class="total-value" id="cheio_total_inicio">0</span>
+                </div>
+            </div>
+
+            <div class="stock-card">
+                <div class="card-title">⭕ Estoque Inicial (Vazios)</div>
+                <div class="input-group">
+                    <label>Início: Botijão Cabeça (x3)</label>
+                    <div class="input-row">
+                        <span>CABEÇA</span>
+                        <input type="number" id="vazio_cabeca" class="input-stock" value="0" oninput="recalcular()">
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>Início: Botijão Regular</label>
+                    <div class="input-row">
+                        <span>NORMAL</span>
+                        <input type="number" id="vazio_normal" class="input-stock" value="0" oninput="recalcular()">
+                    </div>
+                </div>
+                <div class="total-badge">
+                    <span class="total-label">Subtotal Inicial (Vazios)</span>
+                    <span class="total-value" id="vazio_total_inicio">0</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="action-buttons">
+            <button class="btn-save btn-inicio" onclick="salvarBenchmarks()" style="width:100%;">💾 SALVAR ESTOQUE
+                INICIAL DO DIA</button>
+        </div>
+
+        <!-- ========= ENTRADA DE CARGA ========= -->
+        <div class="carga-card">
+            <div class="card-title">🚛 Registrar Entrada de Carga</div>
+            <p style="font-size:13px; color:#636e72; margin-bottom:16px;">Chegou gás durante o dia? Informe a quantidade
+                de botijões <strong>cheios recebidos</strong>. O sistema aumenta os cheios e reduz os vazios
+                automaticamente.</p>
+            <div class="carga-input-row">
+                <input type="number" id="qtd_carga" placeholder="Qtd. de cheios" min="1" value="">
+                <button class="btn-carga" onclick="registrarCarga()">+ REGISTRAR CARGA</button>
+            </div>
+            <div class="cargas-list" id="cargas_list"></div>
+        </div>
+
+        <!-- QUADRO DIÁRIO -->
+        <div class="history-card">
+            <div class="card-title" style="justify-content: space-between;">
+                <span>📅 Quadro Diário (Histórico)</span>
+                <button onclick="window.exportarHistoricoExcel()"
+                    style="background: linear-gradient(135deg,#27ae60,#2ecc71); color:white; border:none; border-radius:8px; padding:8px 16px; font-size:12px; font-weight:800; cursor:pointer; letter-spacing:0.5px; display:flex; align-items:center; gap:6px;">
+                    📤 EXPORTAR EXCEL
+                </button>
+            </div>
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th rowspan="2" class="header-data">Data</th>
+                        <th colspan="2" class="header-inicio">Início Dia</th>
+                        <th rowspan="2" class="header-vendas">Vendas</th>
+                        <th colspan="2" class="header-final">Final Dia</th>
+                        <th rowspan="2" class="header-data">Ações</th>
+                    </tr>
+                    <tr>
+                        <th class="header-inicio">Cheios</th>
+                        <th class="header-inicio">Vazios</th>
+                        <th class="header-final">Cheios</th>
+                        <th class="header-final">Vazios</th>
+                    </tr>
+                </thead>
+                <tbody id="history_body">
+                    <!-- Preenchido via JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Firebase Integration -->
+    
+</body>
+
+</html>
+```

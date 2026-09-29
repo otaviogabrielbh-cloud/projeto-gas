@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Giro de Estoque - Canoas Gás</title>
+    <link rel="icon" type="image/x-icon"
+        href="https://github.com/otaviogabrielbh-cloud/projeto-gas/raw/refs/heads/main/LOGO.ico">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Poppins:wght@300;400;600&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --card-glass: rgba(30, 41, 59, 0.7);
+            --accent-yellow: #f1c40f;
+            --accent-blue: #38bdf8;
+            --accent-green: #2ecc71;
+            --accent-red: #ff7675;
+            --row-white: rgba(255, 255, 255, 0.95);
+        }
+
+        /* MESH GRADIENT BACKGROUND */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 10% 20%, rgba(241, 196, 15, 0.05) 0%, transparent 25%),
+                radial-gradient(circle at 90% 80%, rgba(56, 189, 248, 0.05) 0%, transparent 25%),
+                radial-gradient(circle at 50% 50%, #0f172a 0%, #020617 100%);
+            z-index: -2;
+            animation: meshRotate 40s linear infinite;
+        }
+
+        .estoque-container {
+            max-width: 1100px;
+            margin: 20px auto;
+            padding: 20px;
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .estoque-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            background: var(--card-glass);
+            padding: 25px 30px;
+            border-radius: 24px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .header-title h1 {
+            margin: 0;
+            font-family: 'Outfit', sans-serif;
+            font-size: 26px;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            text-transform: uppercase;
+            font-weight: 800;
+            letter-spacing: 1px;
+        }
+
+        .header-title h1 span {
+            color: var(--accent-yellow);
+        }
+
+        .stock-table-card {
+            background: rgba(30, 41, 59, 0.8);
+            padding: 3px;
+            /* Thin border effect */
+            border-radius: 28px;
+            border: 1px solid rgba(25, 35, 50, 1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            margin-bottom: 35px;
+            overflow: hidden;
+        }
+
+        .stock-table-inline {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0 4px;
+            background: #1e293b;
+        }
+
+        .stock-table-inline th {
+            text-align: center;
+            color: #94a3b8;
+            font-size: 11px;
+            text-transform: uppercase;
+            padding: 15px;
+            letter-spacing: 2px;
+            font-weight: 800;
+            background: #1e293b;
+        }
+
+        .stock-table-inline tr:not(:first-child) {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .stock-table-inline td {
+            padding: 20px 15px;
+            background: var(--row-white);
+            vertical-align: middle;
+        }
+
+        .stock-table-inline tr:hover td {
+            background: #ffffff;
+            transform: scale(1.002);
+            z-index: 10;
+        }
+
+        /* Border Radius for rows */
+        .stock-table-inline td:first-child {
+            border-radius: 12px 0 0 12px;
+        }
+
+        .stock-table-inline td:last-child {
+            border-radius: 0 12px 12px 0;
+        }
+
+        .item-name-simple {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .input-inline {
+            background: #f1f5f9;
+            border: 2px solid #e2e8f0;
+            color: #1e293b;
+            width: 80px;
+            padding: 10px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-family: 'Outfit';
+            font-size: 18px;
+            text-align: center;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .input-inline:focus {
+            border-color: var(--accent-yellow);
+            background: white;
+            box-shadow: 0 0 0 3px rgba(241, 196, 15, 0.1);
+        }
+
+        .val-vendas-inline {
+            font-weight: 700;
+            font-size: 18px;
+            font-family: 'Outfit';
+            color: #64748b;
+        }
+
+        .status-badge {
+            font-weight: 800;
+            font-size: 13px;
+            padding: 6px 14px;
+            border-radius: 8px;
+            display: inline-block;
+        }
+
+        .status-badge.ok {
+            background: #dcfce7;
+            color: #16a34a;
+            border: 1px solid #86efac;
+        }
+
+        .status-badge.erro {
+            background: #fee2e2;
+            color: #dc2626;
+            border: 1px solid #fca5a5;
+        }
+
+        .stock-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0 4px;
+            background: #1e293b;
+        }
+
+        .stock-table th {
+            text-align: center;
+            color: #94a3b8;
+            font-size: 11px;
+            text-transform: uppercase;
+            padding: 15px;
+            letter-spacing: 2px;
+            font-weight: 800;
+            background: #1e293b;
+        }
+
+        .stock-table tr:not(:first-child) {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .stock-table td {
+            padding: 20px 15px;
+            background: var(--row-white);
+            vertical-align: middle;
+        }
+
+        .stock-table tr:hover td {
+            background: #ffffff;
+            transform: scale(1.002);
+            z-index: 10;
+        }
+
+        /* Border Radius for rows */
+        .stock-table td:first-child {
+            border-radius: 12px 0 0 12px;
+        }
+
+        .stock-table td:last-child {
+            border-radius: 0 12px 12px 0;
+        }
+
+        .item-name-box {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .item-icon-circle {
+            width: 44px;
+            height: 44px;
+            background: #f8fafc;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .item-text-info {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .item-label-main {
+            font-weight: 800;
+            color: #334155;
+            font-family: 'Outfit';
+            font-size: 16px;
+        }
+
+        .input-inicio {
+            background: #475569;
+            border: 2px solid transparent;
+            color: var(--accent-yellow);
+            width: 100px;
+            padding: 12px;
+            border-radius: 15px;
+            font-weight: 800;
+            font-family: 'Outfit';
+            font-size: 20px;
+            text-align: center;
+            outline: none;
+            transition: all 0.3s;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .input-inicio:focus {
+            border-color: var(--accent-yellow);
+            background: #334155;
+            transform: translateY(-2px);
+        }
+
+        .val-vendas {
+            font-weight: 800;
+            font-size: 22px;
+            font-family: 'Outfit';
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 8px;
+        }
+
+        .val-saldo {
+            font-weight: 900;
+            font-size: 28px;
+            font-family: 'Outfit';
+            color: #1e293b;
+        }
+
+        .tag-tipo {
+            font-size: 10px;
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .tag-vazio {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #60a5fa;
+        }
+
+        .tag-cheio {
+            background: #fef9c3;
+            color: #a16207;
+            border: 1px solid #fde047;
+        }
+
+        .btn-voltar {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            padding: 14px 28px;
+            border-radius: 18px;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 700;
+            transition: all 0.3s;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-voltar:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateX(-5px);
+        }
+
+        .btn-save-all {
+            background: linear-gradient(135deg, #f1c40f 0%, #f39c12 100%);
+            color: #1e293b;
+            border: none;
+            border-radius: 22px;
+            padding: 22px 40px;
+            font-weight: 800;
+            font-size: 16px;
+            cursor: pointer;
+            box-shadow: 0 20px 40px rgba(243, 156, 18, 0.3);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: block;
+            margin: 50px auto;
+            width: 100%;
+            max-width: 500px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .btn-save-all:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 30px 60px rgba(243, 156, 18, 0.4);
+        }
+
+        .category-header {
+            margin: 50px 0 20px 10px;
+            font-size: 13px;
+            color: #94a3b8;
+            font-weight: 800;
+            letter-spacing: 3px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .category-header i {
+            font-style: normal;
+            font-size: 18px;
+        }
+
+        .category-header::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, rgba(255, 255, 255, 0.1), transparent);
+        }
+
+        @keyframes meshRotate {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* RECIPIENTES SECTION */
+        .recipiente-box {
+            background: var(--row-white);
+            border-radius: 20px;
+            padding: 25px;
+            text-align: center;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+
+        .recipiente-box:hover {
+            transform: translateY(-5px);
+            border-color: var(--accent-yellow);
+            box-shadow: 0 10px 25px rgba(241, 196, 15, 0.2);
+        }
+
+        .recipiente-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .recipiente-label {
+            font-family: 'Outfit';
+            font-weight: 800;
+            font-size: 18px;
+            color: #1e293b;
+            margin-bottom: 5px;
+        }
+
+        .recipiente-sublabel {
+            font-size: 12px;
+            color: #64748b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        .input-recipiente {
+            width: 100%;
+            background: #f1f5f9;
+            border: 2px solid #e2e8f0;
+            color: #1e293b;
+            padding: 15px;
+            border-radius: 12px;
+            font-weight: 800;
+            font-family: 'Outfit';
+            font-size: 24px;
+            text-align: center;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .input-recipiente:focus {
+            border-color: var(--accent-yellow);
+            background: white;
+            box-shadow: 0 0 0 3px rgba(241, 196, 15, 0.1);
+        }
+
+        .balance-indicator {
+            margin-top: 15px;
+            padding: 12px;
+            background: #f8fafc;
+            border-radius: 10px;
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 2px solid #e2e8f0;
+        }
+
+        .balance-text {
+            color: #64748b;
+            font-weight: 600;
+        }
+
+        .balance-text strong {
+            color: #1e293b;
+            font-size: 16px;
+        }
+
+        .balance-status {
+            font-weight: 800;
+            font-size: 14px;
+            padding: 4px 12px;
+            border-radius: 6px;
+        }
+
+        .balance-status.ok {
+            background: #dcfce7;
+            color: #16a34a;
+            border: 1px solid #86efac;
+        }
+
+        .balance-status.erro {
+            background: #fee2e2;
+            color: #dc2626;
+            border: 1px solid #fca5a5;
+        }
+
+        @media (max-width: 768px) {
+            .estoque-container {
+                padding: 10px;
+            }
+
+            .estoque-header {
+                flex-direction: column;
+                gap: 20px;
+                text-align: center;
+                padding: 20px;
+            }
+
+            .header-title h1 {
+                font-size: 20px;
+            }
+
+            .stock-table-card {
+                border-radius: 20px;
+            }
+
+            .stock-table th {
+                font-size: 9px;
+                padding: 10px 5px;
+            }
+
+            .stock-table td {
+                padding: 15px 8px;
+            }
+
+            .input-inicio {
+                width: 70px;
+                font-size: 18px;
+                padding: 10px;
+            }
+
+            .val-saldo {
+                font-size: 22px;
+            }
+
+            .val-vendas {
+                font-size: 18px;
+            }
+        }
+    </style>
+    <!-- VPS Socket.IO & Adapter (Primeiros Scripts) -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="js/vps-adapter.js"></script>
+</head>
+
+<body>
+    <div id="loading" class="loading-overlay">
+        <div style="color: #f1c40f; font-family: 'Outfit'; text-align: center;">
+            <div style="font-size: 32px; font-weight: 800; margin-bottom: 15px; letter-spacing: -1px;">📦 CANOAS GÁS
+            </div>
+            <div style="font-size: 12px; opacity: 0.6; letter-spacing: 4px; font-weight: 600;">CARREGANDO INVENTÁRIO...
+            </div>
+        </div>
+    </div>
+
+    <div class="estoque-container">
+        <header class="estoque-header">
+            <div class="header-title">
+                <h1><span>GIRO</span> ESTOQUE DIÁRIO</h1>
+            </div>
+            <a href="index.html" class="btn-voltar">⬅️ Painel de Operação</a>
+        </header>
+
+        <!-- CATEGORIA 13KG -->
+        <div class="category-header"><i>🔋</i> LINHA 13KG</div>
+        <div class="stock-table-card">
+            <table class="stock-table-inline">
+                <thead>
+                    <tr>
+                        <th width="20%">Produto</th>
+                        <th>Gás Cheio</th>
+                        <th>Vendas (Auto)</th>
+                        <th>Gás Vazio</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            <div class="item-name-simple">
+                                <span class="item-icon-circle">🔥</span>
+                                <span class="item-label-main">Gás 13kg</span>
+                            </div>
+                        </td>
+                        <td align="center">
+                            <input type="number" id="init_g13_cheio" class="input-inline" value="0"
+                                oninput="validarBalanco()" placeholder="0">
+                        </td>
+                        <td align="center">
+                            <span id="sales_g13" class="val-vendas-inline">0</span>
+                        </td>
+                        <td align="center">
+                            <input type="number" id="init_g13_vazio" class="input-inline" value="0"
+                                oninput="validarBalanco()" placeholder="0">
+                        </td>
+                        <td align="center">
+                            <span id="status_g13" class="status-badge">—</span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- CATEGORIA 45KG -->
+        <div class="category-header"><i>🏭</i> LINHA 45KG</div>
+        <div class="stock-table-card">
+            <table class="stock-table-inline">
+                <thead>
+                    <tr>
+                        <th width="20%">Produto</th>
+                        <th>Gás Cheio</th>
+                        <th>Vendas (Auto)</th>
+                        <th>Gás Vazio</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            <div class="item-name-simple">
+                                <span class="item-icon-circle">🪵</span>
+                                <span class="item-label-main">Gás 45kg</span>
+                            </div>
+                        </td>
+                        <td align="center">
+                            <input type="number" id="init_g45_cheio" class="input-inline" value="0"
+                                oninput="validarBalanco()" placeholder="0">
+                        </td>
+                        <td align="center">
+                            <span id="sales_g45" class="val-vendas-inline">0</span>
+                        </td>
+                        <td align="center">
+                            <input type="number" id="init_g45_vazio" class="input-inline" value="0"
+                                oninput="validarBalanco()" placeholder="0">
+                        </td>
+                        <td align="center">
+                            <span id="status_g45" class="status-badge">—</span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- CATEGORIA ÁGUA -->
+        <div class="category-header"><i>💧</i> LINHA ÁGUA 20L</div>
+        <div class="stock-table-card">
+            <table class="stock-table-inline">
+                <thead>
+                    <tr>
+                        <th width="20%">Produto</th>
+                        <th>Água Cheia</th>
+                        <th>Vendas (Auto)</th>
+                        <th>Água Vazia</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            <div class="item-name-simple">
+                                <span class="item-icon-circle">🧊</span>
+                                <span class="item-label-main">Água 20L</span>
+                            </div>
+                        </td>
+                        <td align="center">
+                            <input type="number" id="init_agua_cheia" class="input-inline" value="0"
+                                oninput="validarBalanco()" placeholder="0">
+                        </td>
+                        <td align="center">
+                            <span id="sales_agua" class="val-vendas-inline">0</span>
+                        </td>
+                        <td align="center">
+                            <input type="number" id="init_agua_vazia" class="input-inline" value="0"
+                                oninput="validarBalanco()" placeholder="0">
+                        </td>
+                        <td align="center">
+                            <span id="status_agua" class="status-badge">—</span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- INVENTÁRIO DE RECIPIENTES -->
+        <div class="category-header" style="margin-top: 80px;"><i>📦</i> INVENTÁRIO DE RECIPIENTES</div>
+        <div class="stock-table-card">
+            <div
+                style="padding: 30px; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px;">
+                <!-- Botijão 13kg -->
+                <div class="recipiente-box">
+                    <div class="recipiente-icon">🛢️</div>
+                    <div class="recipiente-label">Botijão 13kg</div>
+                    <div class="recipiente-sublabel">Unidades físicas</div>
+                    <input type="number" id="botijao_13kg_unidades" class="input-recipiente" value="0" placeholder="0"
+                        oninput="validarBalanco()">
+                    <div class="balance-indicator" id="balance_13kg">
+                        <span class="balance-text">⚖️ Total Estoque: <strong id="total_estoque_13kg">0</strong></span>
+                        <span class="balance-status" id="status_balance_13kg">—</span>
+                    </div>
+                </div>
+
+                <!-- Botijão 45kg -->
+                <div class="recipiente-box">
+                    <div class="recipiente-icon">🏭</div>
+                    <div class="recipiente-label">Botijão 45kg</div>
+                    <div class="recipiente-sublabel">Unidades físicas</div>
+                    <input type="number" id="botijao_45kg_unidades" class="input-recipiente" value="0" placeholder="0"
+                        oninput="validarBalanco()">
+                    <div class="balance-indicator" id="balance_45kg">
+                        <span class="balance-text">⚖️ Total Estoque: <strong id="total_estoque_45kg">0</strong></span>
+                        <span class="balance-status" id="status_balance_45kg">—</span>
+                    </div>
+                </div>
+
+                <!-- Vazilhame de Água -->
+                <div class="recipiente-box">
+                    <div class="recipiente-icon">💧</div>
+                    <div class="recipiente-label">Vazilhame de Água</div>
+                    <div class="recipiente-sublabel">Unidades físicas</div>
+                    <input type="number" id="vazilhame_agua_unidades" class="input-recipiente" value="0" placeholder="0"
+                        oninput="validarBalanco()">
+                    <div class="balance-indicator" id="balance_agua">
+                        <span class="balance-text">⚖️ Total Estoque: <strong id="total_estoque_agua">0</strong></span>
+                        <span class="balance-status" id="status_balance_agua">—</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <button class="btn-save-all" onclick="salvarInicio()">💾 ATUALIZAR ESTOQUE INICIAL DA MANHÃ</button>
+        <p style="text-align: center; color: #94a3b8; font-size: 13px; font-weight: 600;">
+            💡 O sistema deduz as vendas automaticamente dos pedidos "Concluídos" de hoje na aba de Operação.
+        </p>
+    </div>
+
+    <!-- Firebase Integration -->
+    
+</body>
+
+</html>

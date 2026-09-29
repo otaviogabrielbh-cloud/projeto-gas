@@ -1,0 +1,21 @@
+{
+    "name": "Gerador de Pedidos - Canoas Gás",
+    "short_name": "Canoas Gás",
+    "start_url": "./index.html",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#6c5ce7",
+    "orientation": "portrait",
+    "icons": [
+        {
+            "src": "https://github.com/otaviogabrielbh-cloud/projeto-gas/raw/refs/heads/main/logo.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "https://github.com/otaviogabrielbh-cloud/projeto-gas/raw/refs/heads/main/logo.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ]
+}

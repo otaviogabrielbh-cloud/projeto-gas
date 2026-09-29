@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão Financeira - Canoas Gás</title>
+    <link rel="icon" type="image/x-icon"
+        href="https://github.com/otaviogabrielbh-cloud/projeto-gas/raw/refs/heads/main/LOGO.ico">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Poppins:wght@300;400;600&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* MESH GRADIENT BACKGROUND - Financial Theme (Green/Emerald) */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 10% 20%, rgba(39, 174, 96, 0.08) 0%, transparent 20%),
+                radial-gradient(circle at 90% 80%, rgba(46, 204, 113, 0.08) 0%, transparent 20%),
+                radial-gradient(circle at 50% 50%, rgba(15, 23, 42, 1) 0%, transparent 50%);
+            z-index: -2;
+            animation: meshRotate 30s linear infinite;
+        }
+
+        .financeiro-container {
+            max-width: 1400px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+
+        .financeiro-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            background: rgba(30, 41, 59, 0.7);
+            padding: 20px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .header-title h1 {
+            margin: 0;
+            font-family: 'Outfit', sans-serif;
+            font-size: 24px;
+            background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .grid-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: rgba(30, 41, 59, 0.7);
+            padding: 24px;
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+            transition: transform 0.3s;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: #94a3b8;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 800;
+            font-family: 'Outfit';
+            color: #2ecc71;
+            text-shadow: 0 0 15px rgba(46, 204, 113, 0.3);
+        }
+
+        .settings-panel {
+            background: rgba(30, 41, 59, 0.7);
+            border-radius: 24px;
+            padding: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .settings-title {
+            color: #2ecc71;
+            font-family: 'Outfit';
+            font-size: 14px;
+            font-weight: 800;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            align-items: flex-end;
+            margin-bottom: 25px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .input-group label {
+            color: #94a3b8;
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+
+        .input-group input {
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            border-radius: 12px;
+            padding: 12px;
+            font-family: 'Outfit';
+            outline: none;
+            font-size: 13px;
+        }
+
+        .btn-save {
+            background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 12px 24px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: transform 0.2s;
+            height: 45px;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .btn-save:hover {
+            transform: scale(1.02);
+        }
+
+        .table-section {
+            background: #ffffff;
+            border-radius: 24px;
+            padding: 24px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            overflow-x: auto;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            color: #1e293b;
+        }
+
+        th {
+            text-align: left;
+            padding: 15px;
+            border-bottom: 2px solid #f1f5f9;
+            color: #64748b;
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 13px;
+        }
+
+        .val-gross {
+            color: #1e293b;
+            font-weight: 500;
+        }
+
+        .val-fee {
+            color: #dc2626;
+        }
+
+        .val-cost {
+            color: #ea580c;
+        }
+
+        .val-net {
+            color: #16a34a;
+            font-weight: 800;
+        }
+
+        .btn-voltar {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 12px;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        .btn-voltar:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0f172a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .hr-settings {
+            border: 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            margin: 20px 0;
+        }
+
+        .footer-conciliation {
+            background: rgba(30, 41, 59, 0.9);
+            border-radius: 24px;
+            padding: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-top: 30px;
+            backdrop-filter: blur(20px);
+        }
+
+        /* CARD INTERACTIVITY */
+        .stat-card.interactive {
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+
+        .stat-card.interactive:hover {
+            transform: translateY(-8px);
+            background: rgba(45, 55, 72, 0.8);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .stat-card.interactive.active {
+            background: rgba(45, 55, 72, 0.9);
+            transform: scale(1.05);
+            box-shadow: 0 0 25px currentColor;
+            z-index: 10;
+        }
+
+        .stat-card.interactive.active::after {
+            content: '✓ FILTRO ATIVO';
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 10px;
+            font-weight: 800;
+            background: currentColor;
+            color: #0f172a;
+            padding: 2px 8px;
+            border-radius: 20px;
+        }
+
+        @keyframes meshRotate {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .gastos-diarios-btn {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 12px 24px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: transform 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .gastos-diarios-btn:hover {
+            transform: scale(1.02);
+        }
+
+        .gastos-section {
+            display: none;
+            margin-bottom: 30px;
+        }
+
+        .gastos-section.active {
+            display: block;
+        }
+
+        .gastos-form {
+            background: rgba(30, 41, 59, 0.7);
+            border-radius: 24px;
+            padding: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+
+        .form-row .input-group {
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .form-row select {
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            border-radius: 12px;
+            padding: 12px;
+            font-family: 'Outfit';
+            outline: none;
+            font-size: 13px;
+            width: 100%;
+        }
+
+        .gastos-table-section {
+            background: #ffffff;
+            border-radius: 24px;
+            padding: 24px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            overflow-x: auto;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .gastos-summary {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .total-gastos {
+            font-size: 20px;
+            font-weight: 800;
+            color: #ef4444;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .nav-tab {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 12px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .nav-tab:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .nav-tab.active {
+            background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .nav-tab.gastos-active {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-excluir-gasto {
+            background: #dc2626;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+    </style>
+    <!-- VPS Socket.IO & Adapter (Primeiros Scripts) -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="js/vps-adapter.js"></script>
+</head>
+
+<body>
+    <div id="loading" class="loading-overlay">
+        <div class="stat-value">CARREGANDO FINANÇAS...</div>
+    </div>
+
+    <div class="financeiro-container">
+        <header class="financeiro-header">
+            <div class="header-title">
+                <h1>💰 GESTÃO FINANCEIRA PRO</h1>
+                <p style="font-size: 12px; color: #94a3b8; margin: 5px 0 0 0;">Controle de taxas, custos e margem
+                    líquida</p>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button class="gastos-diarios-btn" onclick="toggleGastosDiarios()">💸 GASTOS DIÁRIOS</button>
+                <a href="index.html" class="btn-voltar">⬅ VOLTAR PARA PEDIDOS</a>
+            </div>
+        </header>
+
+        <!-- NAV TABS -->
+        <div class="nav-tabs" style="margin-bottom: 20px;">
+            <div class="nav-tab active" id="tabPedidos" onclick="showTab('pedidos')">📊 VENDAS</div>
+            <div class="nav-tab" id="tabGastos" onclick="showTab('gastos')">💸 GASTOS DIÁRIOS</div>
+        </div>
+
+        <!-- GASTOS DIARIOS SECTION -->
+        <section id="gastosSection" class="gastos-section">
+            <div class="gastos-form">
+                <div class="settings-title" style="margin-bottom: 15px;">➕ CADASTRAR NOVO GASTO</div>
+                <div class="form-row">
+                    <div class="input-group">
+                        <label>💰 Valor (R$)</label>
+                        <input type="number" id="gastoValor" step="0.01" placeholder="0,00">
+                    </div>
+                    <div class="input-group">
+                        <label>📝 Descrição</label>
+                        <input type="text" id="gastoDescricao" placeholder="Ex: Combustível, Material">
+                    </div>
+                    <div class="input-group">
+                        <label>💳 Forma de Pagamento</label>
+                        <select id="gastoFormaPagamento">
+                            <option value="PIX">PIX</option>
+                            <option value="Dinheiro">Dinheiro</option>
+                            <option value="Débito">Débito</option>
+                            <option value="Crédito">Crédito</option>
+                            <option value="Boleto">Boleto</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>📅 Data do Gasto</label>
+                        <input type="date" id="gastoData">
+                    </div>
+                </div>
+                <button class="btn-save" onclick="salvarGasto()">💾 CADASTRAR GASTO</button>
+            </div>
+
+            <div class="gastos-summary">
+                <div>
+                    <label style="color: #94a3b8; font-size: 12px; text-transform: uppercase;">Filtrar por Data</label>
+                    <div style="display: flex; gap: 10px; margin-top: 5px;">
+                        <input type="date" id="gastoDataInicio" style="background: rgba(15,23,42,0.5); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 8px; padding: 8px;">
+                        <input type="date" id="gastoDataFim" style="background: rgba(15,23,42,0.5); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 8px; padding: 8px;">
+                    </div>
+                </div>
+                <div class="total-gastos">Total: <span id="totalGastosFiltrado">R$ 0,00</span></div>
+            </div>
+
+            <div class="gastos-table-section">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Descrição</th>
+                            <th>Forma Pagamento</th>
+                            <th>Valor</th>
+                            <th>Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody id="corpoTabelaGastos">
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- SETTINGS PANEL -->
+        <section class="settings-panel">
+            <div class="settings-title">📅 FILTROS E TAXAS</div>
+            <div class="settings-grid">
+                <div class="input-group">
+                    <label>📅 Data Início</label>
+                    <input type="date" id="filterDataInicio">
+                </div>
+                <div class="input-group">
+                    <label>📅 Data Fim</label>
+                    <input type="date" id="filterDataFim">
+                </div>
+                <div class="input-group">
+                    <label>💳 Taxa Crédito (%)</label>
+                    <input type="number" id="taxaCredito" step="any" placeholder="3.5">
+                </div>
+                <div class="input-group">
+                    <label>💵 Taxa Débito (%)</label>
+                    <input type="number" id="taxaDebito" step="any" placeholder="1.5">
+                </div>
+                <div class="input-group">
+                    <label>📱 Taxa APPGAS (%)</label>
+                    <input type="number" id="taxaAppGas" step="any" placeholder="9.9">
+                </div>
+                <div class="input-group">
+                    <label>🔍 Taxa Preço Gás (R$)</label>
+                    <input type="number" id="taxaPrecoGas" step="any" placeholder="10.00">
+                </div>
+            </div>
+
+            <hr class="hr-settings">
+
+            <div class="settings-title">🚚 CUSTOS DE COMPRA (ENTRADA)</div>
+            <div class="settings-grid">
+                <div class="input-group">
+                    <label>🔥 Gás 13kg (R$)</label>
+                    <input type="number" id="custoGas13" step="any" placeholder="85.00">
+                </div>
+                <div class="input-group">
+                    <label>🏭 Gás 45kg (R$)</label>
+                    <input type="number" id="custoGas45" step="any" placeholder="350.00">
+                </div>
+                <div class="input-group">
+                    <label>💧 Água (R$)</label>
+                    <input type="number" id="custoAgua" step="any" placeholder="10.00">
+                </div>
+                <div class="input-group">
+                    <label>📦 Vazilhame Gás (R$)</label>
+                    <input type="number" id="custoVazGas" step="any" placeholder="150.00">
+                </div>
+                <div class="input-group">
+                    <label>📦 Vazilhame Água (R$)</label>
+                    <input type="number" id="custoVazAgua" step="any" placeholder="20.00">
+                </div>
+            </div>
+
+            <button class="btn-save" onclick="salvarTaxas()">SALVAR TODAS AS CONFIGURAÇÕES</button>
+        </section>
+
+        <!-- SUMMARY CARDS -->
+        <section class="grid-stats">
+            <div class="stat-card">
+                <div class="stat-label">Faturamento Bruto</div>
+                <div id="statBruto" class="stat-value">R$ 0,00</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Total Taxas (Cartão+App)</div>
+                <div id="statTaxas" class="stat-value" style="color: #ff7675">R$ 0,00</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Total Custo Compra</div>
+                <div id="statCustos" class="stat-value" style="color: #ea580c">R$ 0,00</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Margem Líquida</div>
+                <div id="statLiquido" class="stat-value" style="color: #16a34a">R$ 0,00</div>
+            </div>
+        </section>
+
+        <!-- TRANSACTIONS TABLE -->
+        <section class="table-section">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Data/Hora</th>
+                        <th>Cliente</th>
+                        <th>Canal / Pagamento / Produto</th>
+                        <th>Vr. Bruto</th>
+                        <th>Taxas (-)</th>
+                        <th>Custo (-)</th>
+                        <th>Vr. Líquido</th>
+                    </tr>
+                </thead>
+                <tbody id="corpoTabela">
+                    <!-- Preenchido via JS -->
+                </tbody>
+            </table>
+        </section>
+
+        <!-- FOOTER CONCILIATION SECTION -->
+        <section class="footer-conciliation">
+            <div class="settings-title" style="font-size: 18px; margin-bottom: 30px;">💰 FECHAMENTO (BANCO/CAIXA)</div>
+
+            <div class="settings-grid" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));">
+                <div class="input-group">
+                    <label>🏦 BANCO PIX (INÍCIO DIA)</label>
+                    <input type="number" id="saldoInicialPix" step="0.01" placeholder="0.00">
+                </div>
+                <div class="input-group">
+                    <label>💳 BANCO CARTÃO (INÍCIO DIA)</label>
+                    <input type="number" id="saldoInicialCartao" step="any" placeholder="0.00">
+                </div>
+                <div class="input-group">
+                    <button class="btn-save" style="height: 45px;" onclick="salvarTaxas()">ATUALIZAR SALDOS
+                        INICIAIS</button>
+                </div>
+            </div>
+
+            <div class="grid-stats"
+                style="display: flex; justify-content: center; flex-wrap: wrap; gap: 20px; margin-top: 30px; margin-bottom: 0;">
+                <div id="cardPix" class="stat-card interactive" onclick="toggleFiltroPagamento('PIX')"
+                    style="flex: 1; min-width: 300px; max-width: 400px; border-top: 4px solid #38bdf8; background: rgba(15, 23, 42, 0.4); color: #38bdf8;">
+                    <div class="stat-label" style="color: #38bdf8">🏦 Banco PIX (Final Dia)</div>
+                    <div id="statBancoPix" class="stat-value" style="color: #38bdf8">R$ 0,00</div>
+                    <div class="stat-sub">Saldo Inicial + Vendas PIX - Taxas</div>
+                </div>
+                <div id="cardCard" class="stat-card interactive" onclick="toggleFiltroPagamento('CARD')"
+                    style="flex: 1; min-width: 300px; max-width: 400px; border-top: 4px solid #818cf8; background: rgba(15, 23, 42, 0.4); color: #818cf8;">
+                    <div class="stat-label" style="color: #818cf8">💳 Banco Cartão (Final Dia)</div>
+                    <div id="statBancoCartao" class="stat-value" style="color: #818cf8">R$ 0,00</div>
+                    <div class="stat-sub">Saldo Inicial + Vendas Cartão - Taxas</div>
+                </div>
+                <div id="cardCash" class="stat-card interactive" onclick="toggleFiltroPagamento('CASH')"
+                    style="flex: 1; min-width: 300px; max-width: 400px; border-top: 4px solid #facc15; background: rgba(15, 23, 42, 0.4); color: #facc15;">
+                    <div class="stat-label" style="color: #facc15">💵 Recebimento Dinheiro Dia</div>
+                    <div id="statDinheiro" class="stat-value" style="color: #facc15">R$ 0,00</div>
+                    <div class="stat-sub">Soma total de vendas em espécie no período</div>
+                </div>
+                <div id="cardNet" class="stat-card"
+                    style="flex: 1; min-width: 300px; max-width: 400px; border-top: 4px solid #10b981; background: rgba(15, 23, 42, 0.4); color: #10b981;">
+                    <div class="stat-label" style="color: #10b981">📈 LUCRO LÍQUIDO DOS PEDIDOS</div>
+                    <div id="statNetTotal" class="stat-value" style="color: #10b981">R$ 0,00</div>
+                    <div class="stat-sub">Soma total de VR. Líquido da tabela</div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Firebase Scripts -->
+    
+</body>
+
+</html>

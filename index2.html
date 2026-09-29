@@ -15,32 +15,7 @@
         href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Poppins:wght@300;400;600&display=swap"
         rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Google Maps Places API -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBdR82ftq_X7poy1T5DRMm_rJpw08dFVaw&libraries=places&language=pt-BR&region=BR&callback=inicializarGooglePlaces" async defer></script>
     <style>
-        /* Google Places Autocomplete Styling */
-        .pac-container {
-            z-index: 99999 !important;
-            border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-            font-family: 'Poppins', 'Outfit', sans-serif;
-            border: 1px solid #e2e8f0;
-            margin-top: 4px;
-        }
-        .pac-item {
-            padding: 8px 12px;
-            cursor: pointer;
-            font-size: 13px;
-        }
-        .pac-item:hover {
-            background-color: #f1f5f9;
-        }
-        .pac-item-query {
-            font-size: 13px;
-            font-weight: 600;
-            color: #1e293b;
-        }
-
         /* Estilos para Foto do Comprovante Pix */
         .detalhe-foto-container {
             margin-top: 15px;
@@ -732,184 +707,6 @@
             display: block;
             animation: fadeIn 0.3s ease;
         }
-
-        /* Mapa Visual de Distribuição de Vendas (Estilo Matriz Print 2) */
-        .vd-visual-map-wrap {
-            margin-top: 20px;
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 16px 20px;
-        }
-        .vd-map-badge {
-            font-size: 11px;
-            font-weight: 700;
-            padding: 3px 10px;
-            border-radius: 20px;
-            background: #e0f2fe;
-            color: #0284c7;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-        }
-        .vd-map-badge.dia-ativo {
-            background: #fef3c7;
-            color: #b45309;
-            border: 1px solid #fde68a;
-        }
-        .vd-cal-day.selected-day {
-            border: 2px solid #10ac84 !important;
-            background: #ecfdf5 !important;
-            box-shadow: 0 0 0 2px rgba(16,172,132,0.25);
-        }
-        .vd-map-table-outer {
-            width: 100%;
-            overflow-x: auto;
-            margin-top: 12px;
-            border-radius: 12px;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.04);
-        }
-        .vd-map-table {
-            min-width: 580px;
-            width: 100%;
-            border: 1px solid #cbd5e1;
-            border-radius: 12px;
-            overflow: hidden;
-            box-sizing: border-box;
-            background: #ffffff;
-            font-family: 'Poppins', sans-serif;
-            user-select: none;
-        }
-        .vd-map-header-gas {
-            background: linear-gradient(135deg, #1e293b, #334155);
-            color: #ffffff;
-            font-size: 15px;
-            font-weight: 700;
-            font-style: italic;
-            text-align: center;
-            padding: 10px 14px;
-            border-bottom: 1px solid #cbd5e1;
-            letter-spacing: 0.5px;
-        }
-        .vd-map-body-gas {
-            display: flex;
-            width: 100%;
-        }
-        .vd-map-col-left {
-            width: 32%;
-            display: flex;
-            flex-direction: column;
-            border-right: 1px solid #cbd5e1;
-        }
-        .vd-map-box-entrega-app {
-            background: #fef3c7;
-            color: #92400e;
-            font-size: 14px;
-            font-weight: 800;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            padding: 10px 8px;
-            border-bottom: 1px solid #fcd34d;
-        }
-        .vd-map-box-portaria-left {
-            background: #e6f9f0;
-            color: #10ac84;
-            font-size: 14px;
-            font-weight: 800;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            padding: 8px;
-        }
-        .vd-map-col-middle {
-            width: 53%;
-            display: flex;
-            flex-direction: column;
-            border-right: 1px solid #cbd5e1;
-        }
-        .vd-map-row-mid {
-            display: flex;
-            border-bottom: 1px solid #f1f5f9;
-            min-height: 34px;
-            flex: 1;
-        }
-        .vd-map-row-mid:last-child {
-            border-bottom: none;
-        }
-        .vd-map-cell-label {
-            width: 70%;
-            background: #f8fafc;
-            color: #475569;
-            font-size: 11.5px;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            padding: 5px 6px;
-            border-right: 1px solid #f1f5f9;
-            text-transform: uppercase;
-            line-height: 1.2;
-        }
-        .vd-map-cell-num {
-            width: 30%;
-            background: #ffffff;
-            color: #0f172a;
-            font-size: 15px;
-            font-weight: 800;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            padding: 5px 6px;
-        }
-        .vd-map-col-right {
-            width: 15%;
-            background: linear-gradient(180deg, #10ac84, #0ca678);
-            color: #ffffff;
-            font-size: 28px;
-            font-weight: 900;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            padding: 8px;
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
-        }
-        .vd-map-row-bottom {
-            display: flex;
-            width: 100%;
-            border-top: 1px solid #cbd5e1;
-        }
-        .vd-map-cell-p45-label {
-            width: 58%;
-            background: #eff6ff;
-            color: #1d4ed8;
-            font-size: 14px;
-            font-weight: 800;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            padding: 8px;
-            border-right: 1px solid #cbd5e1;
-        }
-        .vd-map-cell-p45-num {
-            width: 42%;
-            background: #ffffff;
-            color: #0f172a;
-            font-size: 16px;
-            font-weight: 800;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            padding: 8px;
-        }
         @media (max-width: 768px) {
             .vd-week-grid {
                 grid-template-columns: repeat(2, 1fr);
@@ -1104,7 +901,7 @@
     <div id="loginScreen" class="login-overlay">
         <div class="login-card">
             <div class="logo-container">
-                <img src="logo.png" alt="Logo">
+                <img src="https://github.com/otaviogabrielbh-cloud/projeto-gas/raw/refs/heads/main/logo.png" alt="Logo">
             </div>
             <h2>Bem-vindo!</h2>
             <p>Escolha o seu perfil para entrar:</p>
@@ -1331,7 +1128,6 @@
                 <button class="btn-role btn-gestao" onclick="window.acessarModulo('gestao')" style="background: linear-gradient(135deg, #e17055 0%, #fab1a0 100%); color: white;">📊 Gestão Analítica</button>
                 <button class="btn-role btn-equipe" onclick="window.acessarModulo('equipe')" style="background: linear-gradient(135deg, #00b8d4 0%, #00e5ff 100%); color: white;">👤 Cadastro Equipe</button>
                 <button class="btn-role" onclick="window.abrirModalPresenca()" style="background: linear-gradient(135deg, #0984e3 0%, #2ecc71 100%); color: white;">🕒 Funcionário Presença</button>
-                <button class="btn-role" onclick="window.location.href='controle-dia.html'" style="background: linear-gradient(135deg, #e67e22 0%, #f39c12 100%); color: white;">📅 Controle Dia</button>
                 <button class="btn-role btn-financeiro" onclick="window.acessarModulo('financeiro')" style="background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%); color: white;">💰 Gestão Financeira</button>
                 <button class="btn-role btn-estoque" onclick="window.acessarModulo('estoque')" style="background: linear-gradient(135deg, #f1c40f 0%, #f39c12 100%); color: white;">📦 Gestão de Estoque</button>
                 <button class="btn-role btn-estoque-atual" onclick="window.acessarModulo('estoque_atual')" style="background: linear-gradient(135deg, #00b894 0%, #00cec9 100%); color: white;">📦 Estoque Atual</button>
@@ -1343,7 +1139,7 @@
 
         <div class="container" id="topo">
             <div class="logo-container">
-                <img src="logo.png"
+                <img src="https://github.com/otaviogabrielbh-cloud/projeto-gas/raw/refs/heads/main/logo.png"
                     alt="Logo Canoas Gás" id="imgLogo">
             </div>
 
@@ -1582,8 +1378,6 @@
                 <button class="btn-backup" id="btnControleDia" onclick="window.location.href='controle-dia.html'" style="background: linear-gradient(135deg, #e67e22 0%, #f39c12 100%); box-shadow: 0 4px 15px rgba(230,126,34,0.25);">📅 Controle Dia</button>
                 <button class="btn-backup" id="btnVendasDia" onclick="window.abrirModalVendasDia()" style="background: linear-gradient(135deg, #10ac84 0%, #1dd1a1 100%); box-shadow: 0 4px 15px rgba(16,172,132,0.25);">📅 Vendas Dia</button>
                 <button class="btn-backup" id="btnMapaEntregas" onclick="window.location.href='mapadeentregas.html'" style="background: linear-gradient(135deg, #0984e3 0%, #6c5ce7 100%); box-shadow: 0 4px 15px rgba(9,132,227,0.25);">🗺️ Mapa de Entregas</button>
-                <button class="btn-backup" id="btnAlertaProximidade" onclick="window.location.href='alertaproximidade.html'" style="background: linear-gradient(135deg, #25d366 0%, #128c7e 100%); box-shadow: 0 4px 15px rgba(37,211,102,0.3); color:white; font-weight:700;">📡 Radar de Proximidade</button>
-                <button class="btn-backup" id="btnConfigWhatsApp" onclick="window.location.href='whatsapp-config.html'" style="background: linear-gradient(135deg, #128C7E 0%, #075E54 100%); box-shadow: 0 4px 15px rgba(18,140,126,0.3); color:white; font-weight:700;">⚙️ Config WhatsApp</button>
             </div>
 
             <div class="table-wrap">
@@ -2192,22 +1986,6 @@
                 </div>
             </div>
 
-            <!-- Mapa Visual de Distribuição de Vendas (Estilo Print 2) -->
-            <div class="vd-visual-map-wrap" id="vdVisualMapWrap">
-                <div class="vd-section-title" style="margin-bottom: 8px;">
-                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                        <span>📊 Distribuição Visual de Vendas</span>
-                        <span id="vdVisualMapBadge" class="vd-map-badge">📅 Mês Selecionado</span>
-                    </div>
-                    <button id="vdBtnResetVisualMap" class="vd-btn-nav" style="display: none; padding: 4px 10px; font-size: 11px; background: #f1f5f9;" onclick="window.voltarVisualizacaoMesVendasDia()" title="Voltar a ver acumulado do mês">
-                        🔄 Ver Mês Inteiro
-                    </button>
-                </div>
-                <div id="vdVisualMapContainer">
-                    <!-- Preenchido dinamicamente via JS -->
-                </div>
-            </div>
-
             <!-- Painel de Detalhes do Dia Selecionado -->
             <div class="vd-day-details-panel" id="vdDayDetailsPanel">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
@@ -2285,12 +2063,6 @@
                 document.getElementById('loginPassword').focus();
             } else {
                 document.getElementById('delivererSection').classList.remove('hidden');
-                if (typeof window.renderizarEquipe === 'function') {
-                    const cache = JSON.parse(localStorage.getItem('cache_equipe') || '[]');
-                    if (cache.length > 0) {
-                        window.renderizarEquipe(window.equipeEntregadores && window.equipeEntregadores.length > 0 ? window.equipeEntregadores : cache);
-                    }
-                }
             }
         }
 
@@ -2945,74 +2717,8 @@
                     });
                 });
             }
-
-            // Inicializar Autocomplete do Google Places
-            if (typeof window.inicializarGooglePlaces === 'function') {
-                window.inicializarGooglePlaces();
-            }
         });
 
-        // --- GOOGLE PLACES AUTOCOMPLETE ---
-        window.googleAutocomplete = null;
-        window.ultimoEnderecoCoords = null;
-
-        window.inicializarGooglePlaces = function () {
-            const input = document.getElementById('endereco');
-            if (!input || !window.google || !window.google.maps || !window.google.maps.places) return;
-
-            // Se já inicializado no elemento, não duplicar
-            if (input._googlePlacesInit) return;
-            input._googlePlacesInit = true;
-
-            const opcoes = {
-                componentRestrictions: { country: 'br' },
-                fields: ['address_components', 'formatted_address', 'geometry', 'name'],
-                types: ['address']
-            };
-
-            try {
-                window.googleAutocomplete = new google.maps.places.Autocomplete(input, opcoes);
-
-                // Foco geográfico na Grande BH (Belo Horizonte, Contagem, Betim, etc.)
-                const boundsBH = new google.maps.LatLngBounds(
-                    new google.maps.LatLng(-20.10, -44.20),
-                    new google.maps.LatLng(-19.70, -43.75)
-                );
-                window.googleAutocomplete.setBounds(boundsBH);
-
-                window.googleAutocomplete.addListener('place_changed', () => {
-                    const place = window.googleAutocomplete.getPlace();
-                    if (!place) return;
-
-                    if (place.geometry && place.geometry.location) {
-                        window.ultimoEnderecoCoords = {
-                            lat: place.geometry.location.lat(),
-                            lng: place.geometry.location.lng()
-                        };
-                        console.log("📍 Coordenadas do Google Places capturadas:", window.ultimoEnderecoCoords);
-                    }
-
-                    if (place.formatted_address) {
-                        let enderecoFormatado = place.formatted_address
-                            .replace(/,\s*Brasil$/i, '')
-                            .replace(/,\s*Brazil$/i, '')
-                            .replace(/,\s*State of Minas Gerais/i, ', MG')
-                            .replace(/,\s*Minas Gerais/i, ', MG');
-                        input.value = enderecoFormatado;
-                    }
-
-                    const sug = document.getElementById('enderecoSuggestion');
-                    if (sug) sug.innerText = '';
-                });
-
-                input.addEventListener('input', () => {
-                    // Limpar coordenadas salvas se o usuário alterar manualmente o texto
-                    window.ultimoEnderecoCoords = null;
-                });
-            } catch (err) {
-                console.warn("Aviso ao inicializar Google Places Autocomplete:", err);
-            }
-        };
     </script>
 
     <script>
@@ -3027,23 +2733,6 @@
         const onDisconnect = window.firebaseOnDisconnect;
         const remoteDb = window.remoteDb;
         window.remoteDb = "vps";
-
-        // Sincronização em tempo real das configurações do WhatsApp salvas no Firebase
-        try {
-            onValue(ref(remoteDb, 'configuracoes_whatsapp'), (snapshot) => {
-                const cfg = snapshot.val();
-                if (cfg) {
-                    if (cfg.wp_url) localStorage.setItem('wp_url', cfg.wp_url);
-                    if (typeof cfg.wp_auto_cliente !== 'undefined') localStorage.setItem('wp_auto_cliente', String(cfg.wp_auto_cliente));
-                    if (typeof cfg.wp_auto_entregador !== 'undefined') localStorage.setItem('wp_auto_entregador', String(cfg.wp_auto_entregador));
-                    if (cfg.wp_msg_cliente) localStorage.setItem('wp_msg_cliente', cfg.wp_msg_cliente);
-                    if (cfg.wp_msg_entregador) localStorage.setItem('wp_msg_entregador', cfg.wp_msg_entregador);
-                    console.log("☁️ [Firebase] Configurações de WhatsApp sincronizadas no painel.");
-                }
-            });
-        } catch (e) {
-            console.warn("Aviso ao escutar configuracoes_whatsapp:", e);
-        }
 
         // Declarations
         let db;
@@ -3062,21 +2751,9 @@
         window.atualizarDatalist = atualizarDatalist;
         window.configurarEventos = configurarEventos;
         window.iniciarEscutaTempoReal = iniciarEscutaTempoReal;
-        window.renderizarEquipe = renderizarEquipe;
 
         // --- TEAM MANAGEMENT LOGIC ---
         function escutarEquipe() {
-            // Renderização imediata pelo cache para não travar em 'Carregando equipe...'
-            try {
-                const cacheInicial = JSON.parse(localStorage.getItem('cache_equipe') || '[]');
-                if (cacheInicial && cacheInicial.length > 0) {
-                    window.equipeEntregadores = cacheInicial;
-                    renderizarEquipe(cacheInicial);
-                }
-            } catch (e) {
-                console.warn("Erro ao ler cache_equipe:", e);
-            }
-
             const equipeRef = ref(remoteDb, 'equipe_entregadores');
             onValue(equipeRef, (snapshot) => {
                 const data = snapshot.val();
@@ -3586,7 +3263,6 @@
 
                 renderizarTabelaPorData();
                 atualizarDatalist();
-                if (typeof renderizarListaPainelAmora === 'function') renderizarListaPainelAmora();
             });
 
             escutarBina(); // Inicializa a escuta da Bina (Caller ID)
@@ -3611,7 +3287,6 @@
                 }
                 console.log('🚫 Blacklist carregada:', Object.keys(window.clientesBlacklist).length, 'clientes');
                 if (typeof atualizarDatalist === 'function') atualizarDatalist();
-                if (typeof renderizarListaPainelAmora === 'function') renderizarListaPainelAmora();
             });
         }
 
@@ -3853,9 +3528,6 @@
             }
         }
 
-        let isPrimeiraCargaBina = true;
-        let ultimaChamadaProcessadaTimestamp = 0;
-
         function escutarBina() {
             escutarBinaListPainel();
             const binaRef = ref(remoteDb, 'bina_live');
@@ -3865,83 +3537,33 @@
                     const numero = data.numero;
                     const timestamp = data.timestamp || 0;
 
-                    // NÃ£o reprocessar se for exatamente o mesmo timestamp jÃ¡ tratado
-                    if (timestamp && timestamp === ultimaChamadaProcessadaTimestamp) return;
-
+                    // Só processar se a chamada for recente (últimos 30 segundos)
+                    // Isso evita preencher o campo com uma chamada antiga ao carregar a página
                     const agora = Date.now();
+                    if (agora - timestamp > 30000) return;
 
-                    // Na primeira conexÃ£o ao carregar a pÃ¡gina:
-                    // Se o registro no banco tiver mais de 45 segundos (ou futuro distante), ignora
-                    // para nÃ£o preencher o formulÃ¡rio com ligaÃ§Ã£o antiga
-                    if (isPrimeiraCargaBina) {
-                        isPrimeiraCargaBina = false;
-                        ultimaChamadaProcessadaTimestamp = timestamp;
-                        if (timestamp && (agora - timestamp > 45000 || timestamp - agora > 45000)) {
-                            console.log("ðŸ“ž Bina inicial antiga ignorada:", numero);
-                            return;
-                        }
-                    }
-
-                    // Se a chamada for mais velha que 5 minutos, ignora
-                    if (timestamp && Math.abs(agora - timestamp) > 300000) {
-                        console.log("ðŸ“ž Bina expirada ignorada:", numero);
-                        return;
-                    }
-
-                    ultimaChamadaProcessadaTimestamp = timestamp;
-                    console.log("ðŸ“ž Bina recebida do AMORA:", numero, data);
+                    console.log("📞 Bina detectada:", numero);
 
                     const inputTel = document.getElementById('telefone');
                     if (inputTel) {
+                        // Limpa o formulário antes de preencher o novo número (opcional, para evitar confusão)
+                        // window.btnLimparFormulario(); // Se existir essa função global
+
                         inputTel.value = numero;
+                        // Dispara a máscara e a busca de histórico automática
+                        window.mascaraTelefone(inputTel);
 
-                        // Aplica formataÃ§Ã£o segura
-                        if (typeof mascaraTelefone === 'function') {
-                            mascaraTelefone(inputTel);
-                        } else if (typeof window.mascaraTelefone === 'function') {
-                            window.mascaraTelefone(inputTel);
-                        }
+                        // Notificação visual
+                        mostrarNotificacaoConclusao(`📞 Chamada Recebida: ${numero} `);
 
-                        // Dispara eventos de input e change para ativar listeners do sistema
-                        inputTel.dispatchEvent(new Event('input', { bubbles: true }));
-                        inputTel.dispatchEvent(new Event('change', { bubbles: true }));
-
-                        // Se o AMORA jÃ¡ enviou dados do cliente identificado no Firebase,
-                        // preenche nome e endereÃ§o caso estejam vazios
-                        if (data.cliente_encontrado) {
-                            const inpCliente = document.getElementById('cliente');
-                            const inpEndereco = document.getElementById('endereco');
-                            const inpObs = document.getElementById('obs') || document.getElementById('observacoes');
-                            if (inpCliente && data.nome_cliente && !inpCliente.value) {
-                                inpCliente.value = data.nome_cliente;
-                                inpCliente.dispatchEvent(new Event('input', { bubbles: true }));
-                            }
-                            if (inpEndereco && data.endereco && !inpEndereco.value) {
-                                inpEndereco.value = data.endereco;
-                                inpEndereco.dispatchEvent(new Event('input', { bubbles: true }));
-                            }
-                            if (inpObs && data.observacoes && !inpObs.value) {
-                                inpObs.value = data.observacoes;
-                                inpObs.dispatchEvent(new Event('input', { bubbles: true }));
-                            }
-                        }
-
-                        // Notificação visual destacada
-                        const nomeMsg = data.nome_cliente ? `${data.nome_cliente} (${numero})` : numero;
-                        if (typeof mostrarNotificacaoConclusao === 'function') {
-                            mostrarNotificacaoConclusao(`📞 Chamada AMORA: ${nomeMsg}`);
-                        } else if (typeof window.mostrarMensagemSucesso === 'function') {
-                            window.mostrarMensagemSucesso(`📞 Chamada AMORA: ${nomeMsg}`);
-                        }
-
-                        // Tocar alerta sonoro
+                        // Tocar um bipe discreto
                         try {
                             const ctx = new (window.AudioContext || window.webkitAudioContext)();
                             const osc = ctx.createOscillator();
-                            osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+                            osc.frequency.setValueAtTime(440, ctx.currentTime);
                             osc.connect(ctx.destination);
                             osc.start();
-                            osc.stop(ctx.currentTime + 0.2);
+                            osc.stop(ctx.currentTime + 0.1);
                         } catch (e) { }
                     }
                 }
@@ -4483,12 +4105,6 @@
 
             // Renderizar Calendário
             renderizarGridCalendarioVendasDia(diasMes, totalDiasNoMes, maxVendasDiaMes);
-
-            // Salvar e Renderizar Mapa Visual do Mês
-            window.vdPedidosMesAtuais = pedidosMesValidos;
-            const nomesMesesLista = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-            const nomeMesTxt = nomesMesesLista[vdMesSelecionado] || 'Mês';
-            renderizarMapaVisualVendasDia(pedidosMesValidos, `Mês: ${nomeMesTxt}/${vdAnoSelecionado}`, false);
         };
 
         function renderizarComparativoSemanalVendasDia(statsSemana) {
@@ -4585,20 +4201,6 @@
             const nomesDias = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
             const diaSemanaNome = nomesDias[infoDia.diaSemana];
 
-            // Destacar célula do dia selecionado no calendário
-            document.querySelectorAll('.vd-cal-day').forEach(c => c.classList.remove('selected-day'));
-            const celulas = document.querySelectorAll('.vd-cal-day:not(.empty)');
-            celulas.forEach(c => {
-                const numSpan = c.querySelector('.vd-cal-day-num span');
-                if (numSpan && parseInt(numSpan.textContent, 10) === infoDia.dia) {
-                    c.classList.add('selected-day');
-                }
-            });
-
-            // Atualizar Mapa Visual para o dia selecionado
-            const labelDia = `${diaSemanaNome}, ${dataFormatada}`;
-            window.renderizarMapaVisualVendasDia(infoDia.pedidos || [], labelDia, true);
-
             const isPositivo = (infoDia.faturamentoLiquido || 0) >= 0;
             const vFaturamentoDia = (infoDia.totalValor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
             const vCustoDia = (infoDia.totalCustoCompra || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -4679,175 +4281,6 @@
             content.innerHTML = resumoFinDiaHtml + '<div style="display: flex; flex-wrap: wrap; gap: 16px; width: 100%;">' + canaisHtml + produtosHtml + pagamentosHtml + gastosHtml + '</div>';
             panel.classList.add('show');
             panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        };
-
-        window.voltarVisualizacaoMesVendasDia = function () {
-            document.querySelectorAll('.vd-cal-day').forEach(c => c.classList.remove('selected-day'));
-            const nomesMesesLista = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-            const nomeMesTxt = nomesMesesLista[vdMesSelecionado] || 'Mês';
-            window.renderizarMapaVisualVendasDia(window.vdPedidosMesAtuais || [], `Mês: ${nomeMesTxt}/${vdAnoSelecionado}`, false);
-            const panel = document.getElementById('vdDayDetailsPanel');
-            if (panel) panel.classList.remove('show');
-        };
-
-        window.renderizarMapaVisualVendasDia = function (pedidosList, labelPeriodo, isDia) {
-            const container = document.getElementById('vdVisualMapContainer');
-            const badge = document.getElementById('vdVisualMapBadge');
-            const btnReset = document.getElementById('vdBtnResetVisualMap');
-
-            if (badge) {
-                badge.textContent = `📅 ${labelPeriodo || 'Mês Selecionado'}`;
-                if (isDia) {
-                    badge.classList.add('dia-ativo');
-                } else {
-                    badge.classList.remove('dia-ativo');
-                }
-            }
-
-            if (btnReset) {
-                btnReset.style.display = isDia ? 'inline-block' : 'none';
-            }
-
-            if (!container) return;
-
-            // Os 8 canais de venda oficiais conforme o seletor (Print 1)
-            const canaisEntrega = [
-                { id: 'DISK ENTREGA', label: 'DISK ENTREGA', qtd: 0 },
-                { id: 'APP GAS', label: 'APP GAS', qtd: 0 },
-                { id: 'PRECO DO GAS', label: 'PRECO DO GAS', qtd: 0 },
-                { id: 'DISK GOOGLE', label: 'DISK GOOGLE', qtd: 0 },
-                { id: 'TAXA DISK GAS POVO', label: 'TAXA DISK GAS POVO', qtd: 0 },
-                { id: 'PESQUISA', label: 'PESQUISA', qtd: 0 }
-            ];
-
-            const canaisPortaria = [
-                { id: 'PORTARIA', label: 'PORTARIA', qtd: 0 },
-                { id: 'GAS DO POVO PORTARIA', label: 'GAS DO POVO PORTARIA', qtd: 0 }
-            ];
-
-            const extrasEntrega = {};
-            const extrasPortaria = {};
-            let totalGas = 0;
-            let totalP45 = 0;
-            const outrosProdutos = {};
-
-            (pedidosList || []).forEach(p => {
-                const qtd = parseInt(p.qtd, 10) || 1;
-                const prod = (p.produto || '').trim().toUpperCase();
-                const canal = (p.canalVenda || '').trim().toUpperCase();
-
-                if (prod.includes('P45')) {
-                    totalP45 += qtd;
-                } else if (prod.includes('ÁGUA') || prod.includes('AGUA')) {
-                    const k = 'Água 20L';
-                    outrosProdutos[k] = (outrosProdutos[k] || 0) + qtd;
-                } else {
-                    // Produto Gás (GLP / 13kg)
-                    totalGas += qtd;
-
-                    if (canal === 'DISK ENTREGA') {
-                        canaisEntrega[0].qtd += qtd;
-                    } else if (canal === 'APP GAS' || canal === 'APP' || canal.includes('APP GAS')) {
-                        canaisEntrega[1].qtd += qtd;
-                    } else if (canal === 'PRECO DO GAS' || canal.includes('PRECO') || canal.includes('PREÇO')) {
-                        canaisEntrega[2].qtd += qtd;
-                    } else if (canal === 'DISK GOOGLE') {
-                        canaisEntrega[3].qtd += qtd;
-                    } else if (canal === 'TAXA DISK GAS POVO' || canal.includes('TAXA DISK') || canal.includes('DISK GAS')) {
-                        canaisEntrega[4].qtd += qtd;
-                    } else if (canal === 'PESQUISA') {
-                        canaisEntrega[5].qtd += qtd;
-                    } else if (canal === 'GAS DO POVO PORTARIA' || canal === 'GAS DO POVO') {
-                        canaisPortaria[1].qtd += qtd;
-                    } else if (canal === 'PORTARIA' || canal.includes('PORTARIA')) {
-                        canaisPortaria[0].qtd += qtd;
-                    } else if (canal) {
-                        if (canal.includes('PORTARIA')) {
-                            extrasPortaria[canal] = (extrasPortaria[canal] || 0) + qtd;
-                        } else {
-                            extrasEntrega[canal] = (extrasEntrega[canal] || 0) + qtd;
-                        }
-                    } else {
-                        canaisEntrega[0].qtd += qtd;
-                    }
-                }
-            });
-
-            // Linhas de Entrega
-            let linhasEntregaHtml = '';
-            canaisEntrega.forEach(c => {
-                linhasEntregaHtml += `
-                    <div class="vd-map-row-mid">
-                        <div class="vd-map-cell-label">${c.label}</div>
-                        <div class="vd-map-cell-num">${c.qtd}</div>
-                    </div>
-                `;
-            });
-            for (const [nomeExtra, qtdExtra] of Object.entries(extrasEntrega)) {
-                linhasEntregaHtml += `
-                    <div class="vd-map-row-mid">
-                        <div class="vd-map-cell-label">${nomeExtra}</div>
-                        <div class="vd-map-cell-num">${qtdExtra}</div>
-                    </div>
-                `;
-            }
-
-            // Linhas de Portaria
-            let linhasPortariaHtml = '';
-            canaisPortaria.forEach(c => {
-                linhasPortariaHtml += `
-                    <div class="vd-map-row-mid">
-                        <div class="vd-map-cell-label">${c.label}</div>
-                        <div class="vd-map-cell-num">${c.qtd}</div>
-                    </div>
-                `;
-            });
-            for (const [nomeExtra, qtdExtra] of Object.entries(extrasPortaria)) {
-                linhasPortariaHtml += `
-                    <div class="vd-map-row-mid">
-                        <div class="vd-map-cell-label">${nomeExtra}</div>
-                        <div class="vd-map-cell-num">${qtdExtra}</div>
-                    </div>
-                `;
-            }
-
-            const totalLinhasEntrega = canaisEntrega.length + Object.keys(extrasEntrega).length;
-            const totalLinhasPortaria = canaisPortaria.length + Object.keys(extrasPortaria).length;
-
-            // Linhas de outros produtos (ex: Água Mineral)
-            let outrosProdutosRowsHtml = '';
-            for (const [prodNome, prodQtd] of Object.entries(outrosProdutos)) {
-                outrosProdutosRowsHtml += `
-                    <div class="vd-map-row-bottom">
-                        <div class="vd-map-cell-p45-label" style="background: #e0f2fe; color: #0369a1;">${prodNome}</div>
-                        <div class="vd-map-cell-p45-num">${prodQtd}</div>
-                    </div>
-                `;
-            }
-
-            container.innerHTML = `
-                <div class="vd-map-table-outer">
-                    <div class="vd-map-table">
-                        <div class="vd-map-header-gas">Gas</div>
-                        <div class="vd-map-body-gas">
-                            <div class="vd-map-col-left">
-                                <div class="vd-map-box-entrega-app" style="flex: ${totalLinhasEntrega};">EntreGA APP</div>
-                                <div class="vd-map-box-portaria-left" style="flex: ${totalLinhasPortaria};">PORTARIA</div>
-                            </div>
-                            <div class="vd-map-col-middle">
-                                ${linhasEntregaHtml}
-                                ${linhasPortariaHtml}
-                            </div>
-                            <div class="vd-map-col-right" title="Total Geral de Gás">${totalGas}</div>
-                        </div>
-                        <div class="vd-map-row-bottom">
-                            <div class="vd-map-cell-p45-label">P45</div>
-                            <div class="vd-map-cell-p45-num">${totalP45}</div>
-                        </div>
-                        ${outrosProdutosRowsHtml}
-                    </div>
-                </div>
-            `;
         };
 
         function tocarAlertaConclusao() {
@@ -5238,9 +4671,6 @@
             let itensAgua = 0;
 
             filteredAndSorted.forEach(p => {
-                const sNorm = (p.statusEntrega || '').trim().toUpperCase();
-                if (sNorm === 'CANCELADA' || sNorm === 'CANCELADO') return;
-
                 const prodNorm = (p.produto || '').toLowerCase();
                 const qtd = parseInt(p.qtd) || 0;
 
@@ -6144,172 +5574,6 @@
             modal.style.display = 'block';
         }
 
-        window.dispararWhatsapp = async function(dados, textoEntregador, textoCliente) {
-            try {
-                // Tratar variáveis na mensagem
-                const substituirVariaveis = (template) => {
-                    if (!template) return '';
-                    let t = template;
-                    t = t.replace(/{{nome_cliente}}/g, dados.cliente || '');
-                    t = t.replace(/{{endereco}}/g, dados.endereco || '');
-                    t = t.replace(/{{produto}}/g, dados.produto || '');
-                    t = t.replace(/{{quantidade}}/g, dados.qtd || '');
-                    t = t.replace(/{{valor}}/g, dados.valor || '');
-                    t = t.replace(/{{telefone_cliente}}/g, dados.telefone || '');
-                    t = t.replace(/{{forma_pagamento}}/g, dados.pagamento || '');
-                    t = t.replace(/{{info_adc}}/g, dados.informacoes || '');
-                    
-                    // Buscar nome do entregador para template (opcional)
-                    const entregadorNome = (dados.entregador && dados.entregador !== 'PESQUISA') ? dados.entregador.trim() : '';
-                    t = t.replace(/{{nome_entregador}}/g, entregadorNome);
-                    
-                    return t;
-                };
-
-                const urlApi = localStorage.getItem('wp_url') || 'http://localhost:3000/send-message';
-                const autoCliente = localStorage.getItem('wp_auto_cliente') === 'true';
-                const autoEntregador = localStorage.getItem('wp_auto_entregador') === 'true';
-                
-                const msgCriacaoCliente = localStorage.getItem('wp_msg_cliente');
-                const msgCriacaoEntregador = localStorage.getItem('wp_msg_entregador');
-
-                // Função para adicionar à Fila da Nuvem (Firebase) garantindo envio pelo Notebook
-                const enfileirarMensagemNuvem = (telefone, mensagem, tipo, destinatario) => {
-                    let itemRef = null;
-                    if (window.firebasePush && window.firebaseRef && window.remoteDb) {
-                        try {
-                            itemRef = window.firebasePush(window.firebaseRef(window.remoteDb, 'fila_whatsapp'));
-                            window.firebaseSet(itemRef, {
-                                telefone: '55' + telefone,
-                                mensagem: mensagem,
-                                tipo: tipo,
-                                destinatario: destinatario || '',
-                                cliente: dados.cliente || '',
-                                status: 'pendente',
-                                criadoEm: Date.now(),
-                                origem: 'gerenciador_pedidos'
-                            });
-                            console.log(`☁️ [Fila WhatsApp] Mensagem para ${tipo} (${destinatario || telefone}) adicionada à nuvem.`);
-                        } catch (errFila) {
-                            console.warn("⚠️ Erro ao salvar na fila do Firebase:", errFila);
-                        }
-                    }
-                    return itemRef;
-                };
-
-                // Disparo Cliente
-                if (autoCliente && dados.telefone) {
-                    const telLimpo = dados.telefone.replace(/\D/g, '');
-                    if (telLimpo.length >= 10) { 
-                        let msgCliente = substituirVariaveis(msgCriacaoCliente) || textoCliente;
-                        const filaRefCli = enfileirarMensagemNuvem(telLimpo, msgCliente, 'cliente', dados.cliente || 'Cliente');
-
-                        // Tenta envio direto se o servidor estiver rodando nesta mesma máquina
-                        fetch(urlApi, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ phone: '55' + telLimpo, message: msgCliente })
-                        }).then(res => {
-                            if (res.ok && filaRefCli && window.firebaseUpdate) {
-                                // Se já enviou diretamente, marca na fila para não reenviar
-                                window.firebaseUpdate(filaRefCli, { status: 'enviado', enviadoDireto: true, enviadoEm: Date.now() });
-                            }
-                        }).catch(e => {
-                            console.log("ℹ️ Envio direto não conectado; a fila do Firebase assumirá o envio pelo Notebook.");
-                        });
-                    }
-                }
-
-                // Disparo Entregador
-                if (autoEntregador && dados.entregador && dados.entregador !== 'PESQUISA') {
-                    const entregadorNome = dados.entregador.trim();
-                    const sanitizarChaveCracha = (str) => {
-                        return (str || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim().replace(/[^A-Z0-9]/g, "_");
-                    };
-                    const chave = sanitizarChaveCracha(entregadorNome);
-                    
-                    // Inicializar cache se disponível
-                    if (!window.crachasCadastrados) {
-                        try {
-                            const cached = localStorage.getItem('cache_crachas_entregadores');
-                            if (cached) window.crachasCadastrados = JSON.parse(cached);
-                        } catch (e) {}
-                    }
-                    
-                    let cracha = null;
-                    if (window.crachasCadastrados && window.crachasCadastrados[chave]) {
-                        cracha = window.crachasCadastrados[chave];
-                    } else if (window.crachasCadastrados) {
-                        cracha = Object.values(window.crachasCadastrados).find(c => {
-                            const cNome = sanitizarChaveCracha(c.nome || '');
-                            const cId = sanitizarChaveCracha(c.id || '');
-                            return cNome === chave || cId === chave || cNome.startsWith(chave) || chave.startsWith(cNome);
-                        }) || null;
-                    }
-
-                    if (!cracha && window.firebaseGet && window.firebaseRef && window.remoteDb) {
-                        try {
-                            const snap = await window.firebaseGet(window.firebaseRef(window.remoteDb, 'crachas_entregadores/' + chave));
-                            if (snap && snap.exists()) {
-                                cracha = snap.val();
-                                if (!window.crachasCadastrados) window.crachasCadastrados = {};
-                                window.crachasCadastrados[chave] = cracha;
-                            } else {
-                                // Fallback inteligente: buscar em todos os crachás caso o nome esteja abreviado ou com sobrenome
-                                const allSnap = await window.firebaseGet(window.firebaseRef(window.remoteDb, 'crachas_entregadores'));
-                                if (allSnap && allSnap.exists()) {
-                                    const todos = allSnap.val() || {};
-                                    cracha = Object.values(todos).find(c => {
-                                        const cNome = sanitizarChaveCracha(c.nome || '');
-                                        const cId = sanitizarChaveCracha(c.id || '');
-                                        return cNome === chave || cId === chave || cNome.startsWith(chave) || chave.startsWith(cNome);
-                                    }) || null;
-                                    if (cracha) {
-                                        if (!window.crachasCadastrados) window.crachasCadastrados = {};
-                                        window.crachasCadastrados[chave] = cracha;
-                                    }
-                                }
-                            }
-                        } catch (e) {
-                            console.warn("Erro ao buscar crachá:", e);
-                        }
-                    }
-
-                    const foneEntregadorRaw = cracha ? (cracha.telefone || cracha.whatsapp || '') : '';
-                    if (foneEntregadorRaw) {
-                        let telEntregador = foneEntregadorRaw.replace(/\D/g, '');
-                        if (telEntregador && telEntregador.length >= 10) {
-                            let msgEntregador = substituirVariaveis(msgCriacaoEntregador) || textoEntregador;
-                            const filaRefEnt = enfileirarMensagemNuvem(telEntregador, msgEntregador, 'entregador', dados.entregador);
-
-                            // Tenta envio direto se o servidor estiver nesta máquina
-                            fetch(urlApi, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ phone: '55' + telEntregador, message: msgEntregador })
-                            }).then(res => {
-                                if (res.ok) {
-                                    console.log(`✅ WhatsApp direto para entregador ${dados.entregador} (${telEntregador})`);
-                                    if (filaRefEnt && window.firebaseUpdate) {
-                                        window.firebaseUpdate(filaRefEnt, { status: 'enviado', enviadoDireto: true, enviadoEm: Date.now() });
-                                    }
-                                }
-                            }).catch(e => {
-                                console.log("ℹ️ Envio direto não conectado; a fila do Firebase assumirá o envio pelo Notebook.");
-                            });
-                        } else {
-                            console.warn("Telefone do entregador inválido (menos de 10 dígitos):", foneEntregadorRaw);
-                        }
-                    } else {
-                        console.warn(`Crachá ou telefone não encontrado para o entregador "${dados.entregador}".`);
-                    }
-                }
-
-            } catch (e) {
-                console.error("Erro no processamento do whatsapp:", e);
-            }
-        };
-
         function salvarEFinalizarPedido(dados, displayProd, isPortaria, isPesquisa, textoEntregador, textoCliente) {
             // Salvar no Firebase (Fonte de Verdade Real-time)
             push(ref(remoteDb, 'pedidos_realtime'), dados).then((snapshot) => {
@@ -6336,11 +5600,6 @@
                 atualizarDatalist();
                 document.getElementById('topo').scrollIntoView({ behavior: 'smooth' });
                 if (!isPesquisa && typeof window.imprimirRecibo === 'function') window.imprimirRecibo(dados, displayProd, false, false, true);
-                
-                // Disparo de Whatsapp
-                if (!isPesquisa && !isPortaria) {
-                    window.dispararWhatsapp(dados, textoEntregador, textoCliente);
-                }
                 return;
             }
 
@@ -6375,11 +5634,6 @@
                 if (!isPesquisa && typeof window.imprimirRecibo === 'function') {
                     window.imprimirRecibo(dados, displayProd, false, false, true);
                 }
-
-                // Disparo de Whatsapp
-                if (!isPesquisa && !isPortaria) {
-                    window.dispararWhatsapp(dados, textoEntregador, textoCliente);
-                }
             };
         }
 
@@ -6398,16 +5652,12 @@
             const isPortaria = canalVenda === 'PORTARIA' || canalVenda === 'GAS DO POVO PORTARIA';
             const isPesquisa = canalVenda === 'PESQUISA';
 
-            const isZeraQtd = isPesquisa || canalVenda === 'TAXA DISK GAS POVO' || (canalVenda || '').toUpperCase().includes('TAXA');
-            const qtdVal = parseInt($('qtd'));
-            const finalQtd = isZeraQtd ? 0 : (isNaN(qtdVal) ? 1 : qtdVal);
-
             const dados = {
                 data: new Date().toLocaleString('pt-BR'),
                 cliente: nome,
                 telefone: $('telefone') || "Não informado",
                 canalVenda: canalVenda,
-                qtd: finalQtd,
+                qtd: parseInt($('qtd')) || 1,
                 produto: $('produto'),
                 endereco: endereco,
                 informacoes: $('informacoes'),
@@ -6419,13 +5669,6 @@
                 numSeq: isPesquisa ? '' : window.obterProximoSequencial(), // Gera o número no momento da criação
                 timestamp: Date.now() // Timestamp exato da criação
             };
-
-            // Coordenadas do Google Places (se disponíveis)
-            if (window.ultimoEnderecoCoords) {
-                dados.lat = window.ultimoEnderecoCoords.lat;
-                dados.lng = window.ultimoEnderecoCoords.lng;
-                window.ultimoEnderecoCoords = null; // Limpa para o próximo pedido
-            }
 
             // SEGUNDA MELHORIA: Gravar status do cliente (Novo/Antigo) no momento do pedido
             const telLimpo = (dados.telefone || '').replace(/\D/g, '');
@@ -6585,8 +5828,6 @@
             campo.value = valor;
             if (valor.length >= 14) { buscarUltimoPedidoPorTelefone(valor); }
         }
-        window.mascaraTelefone = mascaraTelefone;
-        if (typeof mascaraMoeda === 'function') { window.mascaraMoeda = mascaraMoeda; }
 
         function buscarUltimoPedidoPorTelefone(tel) {
             const historico = window.todosPedidosFirebase.filter(p => p.telefone === tel);
@@ -6957,8 +6198,7 @@
         function configurarEventos() {
             document.getElementById('btnGerar').addEventListener('click', gerarPedido);
             document.getElementById('canalVenda').addEventListener('change', (e) => {
-                const val = e.target.value;
-                const isPesq = val === 'PESQUISA';
+                const isPesq = e.target.value === 'PESQUISA';
                 const cEntregador = document.getElementById('containerEntregador');
                 const cPagamento = document.getElementById('containerPagamento');
                 const cDuracao = document.getElementById('containerDuracao');
@@ -6966,31 +6206,7 @@
                 if (cEntregador) cEntregador.style.display = isPesq ? 'none' : 'block';
                 if (cPagamento) cPagamento.style.display = isPesq ? 'none' : 'block';
                 if (cDuracao) cDuracao.style.display = isPesq ? 'none' : 'block';
-
-                const inputQtd = document.getElementById('qtd');
-                if (inputQtd) {
-                    if (isPesq || val === 'TAXA DISK GAS POVO' || val.includes('TAXA')) {
-                        inputQtd.value = '0';
-                    } else if (inputQtd.value === '0') {
-                        inputQtd.value = '1';
-                    }
-                }
             });
-
-            const elRetroCanal = document.getElementById('retroCanalVenda');
-            if (elRetroCanal) {
-                elRetroCanal.addEventListener('change', (e) => {
-                    const val = e.target.value;
-                    const retroQtd = document.getElementById('retroQtd');
-                    if (retroQtd) {
-                        if (val === 'PESQUISA' || val === 'TAXA DISK GAS POVO' || val.includes('TAXA')) {
-                            retroQtd.value = '0';
-                        } else if (retroQtd.value === '0') {
-                            retroQtd.value = '1';
-                        }
-                    }
-                });
-            }
             const inpValor = document.getElementById('valor'); inpValor.addEventListener('input', () => mascaraMoeda(inpValor));
             const inpTel = document.getElementById('telefone'); inpTel.addEventListener('input', () => mascaraTelefone(inpTel));
             const inpEnd = document.getElementById('endereco');
@@ -7378,11 +6594,8 @@
             const qtdVendasEntregador = {}; // { entregador: quantidade }
             const detalhado = {}; // { entregador: { forma: total } }
 
-            // Filtrar apenas pedidos com status "Concluída" (e nunca cancelados)
-            const concluidos = window.pedidosFiltradosGlobal.filter(p => {
-                const s = (p.statusEntrega || '').trim().toUpperCase();
-                return s === 'CONCLUÍDA' || s === 'CONCLUIDA';
-            });
+            // Filtrar apenas pedidos com status "Concluída"
+            const concluidos = window.pedidosFiltradosGlobal.filter(p => p.statusEntrega === 'Concluída');
 
             concluidos.forEach(p => {
                 const v = parseValorPedido(p.valor);
@@ -7546,9 +6759,6 @@
 
             window.todosPedidosFirebase.forEach(p => {
                 if (!p.data) return;
-                const sNorm = (p.statusEntrega || '').trim().toUpperCase();
-                if (sNorm === 'CANCELADA' || sNorm === 'CANCELADO') return;
-
                 const match = p.data.match(/(\d{4})/);
                 if (!match || match[1] !== ano) return;
 
@@ -7634,9 +6844,6 @@
 
             window.todosPedidosFirebase.forEach(p => {
                 if (!p.data) return;
-                const sNorm = (p.statusEntrega || '').trim().toUpperCase();
-                if (sNorm === 'CANCELADA' || sNorm === 'CANCELADO') return;
-
                 const matchAno = p.data.match(/(\d{4})/);
                 const matchMes = p.data.match(/\/(\d{2})\//);
                 if (!matchAno || matchAno[1] !== ano) return;
@@ -7723,9 +6930,6 @@
 
             window.todosPedidosFirebase.forEach(p => {
                 if (!p.data) return;
-                const sNorm = (p.statusEntrega || '').trim().toUpperCase();
-                if (sNorm === 'CANCELADA' || sNorm === 'CANCELADO') return;
-
                 const matchAno = p.data.match(/(\d{4})/);
                 const matchMes = p.data.match(/\/(\d{2})\//);
                 if (!matchAno || matchAno[1] !== ano) return;
@@ -7801,9 +7005,6 @@
 
             window.todosPedidosFirebase.forEach(p => {
                 if (!p.data) return;
-                const sNorm = (p.statusEntrega || '').trim().toUpperCase();
-                if (sNorm === 'CANCELADA' || sNorm === 'CANCELADO') return;
-
                 const matchAno = p.data.match(/(\d{4})/);
                 const matchMes = p.data.match(/\/(\d{2})\//);
                 if (!matchAno || matchAno[1] !== ano) return;
@@ -7880,7 +7081,7 @@
 
         function gerarPrevisaoRetencao() {
             const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
-            const ativos = (window.pedidosFiltradosGlobal || []).filter(p => {
+            const ativos = pedidosFiltradosGlobal.filter(p => {
                 if (!p.duracaoGas || p.duracaoGas <= 0) return false;
                 try { const [d, m, y] = p.data.split(/[\s,]+/)[0].split('/'); const dataCompra = new Date(`${y}-${m}-${d}`); const diasPassados = Math.ceil(Math.abs(hoje - dataCompra) / (1000 * 60 * 60 * 24)); return (p.duracaoGas - diasPassados) > 0; } catch { return false; }
             });
@@ -7888,6 +7089,7 @@
             const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + "Cliente,Telefone,Endereco,Data Compra,Dias Restantes\n" + ativos.map(p => { const [d, m, y] = p.data.split(/[\s,]+/)[0].split('/'); const dataCompra = new Date(`${y}-${m}-${d}`); const diasPassados = Math.ceil(Math.abs(hoje - dataCompra) / (1000 * 60 * 60 * 24)); const restantes = p.duracaoGas - diasPassados; return `"${p.cliente}","${p.telefone}","${p.endereco}","${p.data}","${restantes}"`; }).join("\n");
             const encodedUri = encodeURI(csvContent); const link = document.createElement("a"); link.setAttribute("href", encodedUri); link.setAttribute("download", "previsao_recompra_gas.csv"); document.body.appendChild(link); link.click(); document.body.removeChild(link);
         }
+
 
         function exportarExcel() {
             const dados = window.pedidosFiltradosGlobal || [];
@@ -7902,47 +7104,27 @@
                 'Pagamento', 'Canal de Venda', 'Entregador', 'Endereço'
             ];
 
-            // Ordenar primeiramente por data (mais antiga primeiro) e secundariamente por entregador do dia
-            const dadosOrdenados = [...dados].sort((a, b) => {
+            // Montar linhas de dados
+            const linhas = dados.map(p => [
+                p.data || '',
+                p.produto || '',
+                p.valor || '',
+                '',
+                '',
+                p.pagamento || '',
+                p.canalVenda || '',
+                p.entregador || '',
+                p.endereco || ''
+            ]);
+
+            // Ordenar por data (mais antiga primeiro)
+            linhas.sort((a, b) => {
                 const parseDate = (str) => {
                     const [dataPart] = (str || '').split(/[\s,]+/);
-                    const [d, m, y] = (dataPart || '').split('/');
+                    const [d, m, y] = dataPart.split('/');
                     return new Date(`${y}-${m}-${d}`);
                 };
-                const compData = parseDate(a.data) - parseDate(b.data);
-                if (compData !== 0) return compData;
-
-                const entA = (a.entregador || '').trim().toLowerCase();
-                const entB = (b.entregador || '').trim().toLowerCase();
-                return entA.localeCompare(entB, 'pt-BR');
-            });
-
-            // Montar linhas de dados com telefone após o endereço
-            const linhas = dadosOrdenados.map(p => {
-                const end = p.endereco || '';
-                const numTel = (p.telefone || p.tel || '').trim();
-                const telStr = numTel ? ` - ${numTel}` : '';
-                const enderecoComTelefone = end + telStr;
-
-                let prod = p.produto || '';
-                if (prod.trim().toUpperCase() === 'GÁS 13KG' || prod.trim().toUpperCase() === '1X GÁS 13KG' || prod.trim() === 'Gás 13kg' || prod.trim() === '1x Gás 13kg') {
-                    prod = 'SUPERGASBRAS';
-                }
-
-                // Extrair somente DD/MM/AAAA da string de data/hora
-                const dataApenas = (p.data || '').split(/[\s,]+/)[0] || '';
-
-                return [
-                    dataApenas,
-                    prod,
-                    p.valor || '',
-                    '',
-                    '',
-                    p.pagamento || '',
-                    p.canalVenda || '',
-                    p.entregador || '',
-                    enderecoComTelefone
-                ];
+                return parseDate(a[0]) - parseDate(b[0]);
             });
 
             // Calcular totalizadores ao final
@@ -8877,9 +8059,6 @@
 
             const canaisCount = {};
             window.pedidosFiltradosGlobal.forEach(p => {
-                const sNorm = (p.statusEntrega || '').trim().toUpperCase();
-                if (sNorm === 'CANCELADA' || sNorm === 'CANCELADO') return;
-
                 const canal = p.canal || p.canalVenda || "Desconhecido";
                 const qtd = parseInt(p.qtd) || 0;
                 canaisCount[canal] = (canaisCount[canal] || 0) + qtd;

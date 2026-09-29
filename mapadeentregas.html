@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>🗺️ Mapa de Entregas em Tempo Real - Canoas Gás</title>
+
+    <link rel="icon" type="image/x-icon"
+        href="https://github.com/otavio.gabrielbh-cloud/projeto-gas/raw/refs/heads/main/LOGO.ico">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+
+    <style>
+        :root {
+            --primary: #0984e3;
+            --primary-dark: #074b83;
+            --secondary: #6c5ce7;
+            --success: #00b894;
+            --warning: #fdcb6e;
+            --danger: #ff4757;
+            --dark: #2d3436;
+            --light-bg: #f8f9fa;
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.08);
+            --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.15);
+            --radius-sm: 8px;
+            --radius-md: 14px;
+            --radius-lg: 20px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Outfit', 'Poppins', sans-serif;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #eef2f5;
+        }
+
+        #app-container {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        /* Top Floating Bar */
+        .top-navbar {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            right: 15px;
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 10px 20px;
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-md);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            pointer-events: auto;
+        }
+
+        .brand-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-logo {
+            height: 38px;
+            width: auto;
+            border-radius: 6px;
+        }
+
+        .brand-title {
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .stats-pills {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .stat-pill {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            background: #f1f2f6;
+            color: var(--dark);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .stat-pill.online {
+            background: #e6fffa;
+            color: #00b894;
+            border: 1px solid #b2f5ea;
+        }
+
+        .stat-pill.pendentes {
+            background: #fff5f5;
+            color: #ff4757;
+            border: 1px solid #fed7d7;
+        }
+
+        .stat-pill.rota {
+            background: #ebf8ff;
+            color: #3182ce;
+            border: 1px solid #bee3f8;
+        }
+
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-nav {
+            padding: 8px 16px;
+            border-radius: var(--radius-sm);
+            font-weight: 700;
+            font-size: 13px;
+            cursor: pointer;
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .btn-voltar {
+            background: #f1f2f6;
+            color: var(--dark);
+        }
+
+        .btn-voltar:hover {
+            background: #dfe4ea;
+            transform: translateY(-1px);
+        }
+
+        .btn-toggle-sidebar {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(9, 132, 227, 0.3);
+        }
+
+        .btn-toggle-sidebar:hover {
+            opacity: 0.95;
+            transform: translateY(-1px);
+        }
+
+        /* Fullscreen Map */
+        #map {
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* Sidebar / Painel Lateral */
+        .sidebar {
+            position: absolute;
+            top: 80px;
+            bottom: 20px;
+            left: 15px;
+            width: 380px;
+            max-width: calc(100vw - 30px);
+            z-index: 1000;
+            background: var(--card-bg);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-md);
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: transform 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+        }
+
+        .sidebar.collapsed {
+            transform: translateX(-410px);
+        }
+
+        .sidebar-header {
+            padding: 15px 18px;
+            background: linear-gradient(135deg, #2d3436 0%, #1e272e 100%);
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .sidebar-header h3 {
+            font-size: 15px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .sidebar-filters {
+            padding: 12px 16px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .filter-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .filter-row select,
+        .filter-row input[type="date"] {
+            flex: 1;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid #ced4da;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--dark);
+            background: white;
+            outline: none;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+
+        .filter-row input[type="date"]:focus,
+        .filter-row select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(214, 48, 49, 0.15);
+        }
+
+        .date-filter-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: white;
+            border: 1px solid #ced4da;
+            border-radius: 8px;
+            padding: 2px 4px 2px 10px;
+            flex: 1;
+        }
+
+        .date-filter-container input[type="date"] {
+            border: none;
+            padding: 6px 4px;
+            flex: 1;
+            background: transparent;
+        }
+
+        .btn-hoje-filtro {
+            background: #f1f2f6;
+            color: #57606f;
+            border: 1px solid #dfe4ea;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 800;
+            padding: 6px 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .btn-hoje-filtro:hover {
+            background: #dfe4ea;
+            color: var(--dark);
+        }
+
+        .btn-hoje-filtro.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .sidebar-tabs {
+            display: flex;
+            border-bottom: 1px solid #e9ecef;
+            background: white;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            border: none;
+            background: transparent;
+            font-size: 13px;
+            font-weight: 700;
+            color: #636e72;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+            background: rgba(9, 132, 227, 0.05);
+        }
+
+        .sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        /* Cards na Sidebar */
+        .sidebar-card {
+            background: white;
+            border-radius: var(--radius-sm);
+            padding: 12px 14px;
+            border: 1px solid #e9ecef;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .sidebar-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 14px rgba(0, 0, 0, 0.08);
+            border-color: var(--primary);
+        }
+
+        .sidebar-card.entregador-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .sidebar-card.pedido-item {
+            border-left: 5px solid var(--danger);
+        }
+
+        .sidebar-card.pedido-item.rota {
+            border-left-color: #3182ce;
+        }
+
+        .sidebar-card.pedido-item.prioridade {
+            border-left-color: #ff4757;
+            background: #fffafa;
+            border-top: 2px solid #ff7675;
+        }
+
+        .card-header-flex {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+
+        .card-title {
+            font-weight: 700;
+            font-size: 14px;
+            color: var(--dark);
+        }
+
+        .card-subtitle {
+            font-size: 12px;
+            color: #636e72;
+            margin-bottom: 6px;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .badge-online { background: #d4edda; color: #155724; }
+        .badge-offline { background: #f8d7da; color: #721c24; }
+        .badge-pendente { background: #ffeaa7; color: #d63031; }
+        .badge-rota { background: #dfe6e9; color: #0984e3; }
+
+        /* Custom Leaflet Markers */
+        .marker-deliverer {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .marker-deliverer-icon {
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(135deg, #00cec9, #0984e3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            color: white;
+            box-shadow: 0 4px 14px rgba(9, 132, 227, 0.5);
+            border: 3px solid white;
+        }
+
+        .marker-deliverer-name {
+            position: absolute;
+            bottom: -22px;
+            background: rgba(45, 52, 54, 0.95);
+            color: white;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 10px;
+            white-space: nowrap;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+
+        .marker-pulse {
+            position: absolute;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(0, 206, 201, 0.4);
+            animation: delivererPulse 2s infinite;
+        }
+
+        @keyframes delivererPulse {
+            0% { transform: scale(1); opacity: 0.8; }
+            100% { transform: scale(2.2); opacity: 0; }
+        }
+
+        .marker-delivery-pin {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .marker-delivery-bubble {
+            background: #ff4757;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 800;
+            box-shadow: 0 4px 10px rgba(255, 71, 87, 0.4);
+            border: 2px solid white;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .marker-delivery-bubble.rota {
+            background: #0984e3;
+            box-shadow: 0 4px 10px rgba(9, 132, 227, 0.4);
+        }
+
+        .marker-delivery-point {
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-top: 8px solid #ff4757;
+            margin-top: -1px;
+        }
+
+        .marker-delivery-point.rota {
+            border-top-color: #0984e3;
+        }
+
+        /* Estilos da Rota do Dia */
+        .marker-delivery-bubble.concluida {
+            background: linear-gradient(135deg, #00b894, #00cec9);
+            box-shadow: 0 4px 12px rgba(0, 184, 148, 0.45);
+        }
+        .marker-delivery-point.concluida {
+            border-top-color: #00b894;
+        }
+
+        .marker-delivery-bubble.pendente-rota {
+            background: linear-gradient(135deg, #e67e22, #f39c12);
+            box-shadow: 0 4px 12px rgba(230, 126, 34, 0.45);
+        }
+        .marker-delivery-point.pendente-rota {
+            border-top-color: #e67e22;
+        }
+
+        .stop-num-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 6px;
+            padding: 1px 5px;
+            font-weight: 900;
+            font-size: 11px;
+            color: #fff;
+            margin-right: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+
+        .btn-rota-atalho {
+            background: linear-gradient(135deg, #0984e3 0%, #6c5ce7 100%);
+            color: white;
+            border: none;
+            padding: 5px 9px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            box-shadow: 0 2px 6px rgba(108, 92, 231, 0.25);
+            transition: all 0.2s ease;
+        }
+        .btn-rota-atalho:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(108, 92, 231, 0.4);
+            opacity: 0.95;
+        }
+
+        /* Card Flutuante de Resumo da Rota */
+        .card-resumo-rota {
+            position: absolute;
+            bottom: 22px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(45, 52, 54, 0.94);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            color: white;
+            padding: 10px 18px;
+            border-radius: 30px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+            border: 1px solid rgba(255,255,255,0.2);
+            z-index: 999;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            max-width: calc(100vw - 40px);
+            animation: slideUpFade 0.3s ease;
+        }
+        @keyframes slideUpFade {
+            from { transform: translate(-50%, 20px); opacity: 0; }
+            to { transform: translate(-50%, 0); opacity: 1; }
+        }
+
+        .sidebar-card.rota-step-item {
+            border-left: 5px solid #0984e3;
+            background: #fdfdfd;
+        }
+        .sidebar-card.rota-step-item.concluida {
+            border-left-color: #00b894;
+        }
+        .sidebar-card.rota-step-item.rota {
+            border-left-color: #0984e3;
+        }
+        .sidebar-card.rota-step-item.pendente {
+            border-left-color: #e67e22;
+        }
+
+        .banner-rota-info {
+            background: linear-gradient(135deg, rgba(9, 132, 227, 0.1) 0%, rgba(108, 92, 231, 0.1) 100%);
+            border: 1px solid rgba(9, 132, 227, 0.3);
+            border-radius: var(--radius-sm);
+            padding: 10px 12px;
+            margin-bottom: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        /* Marcadores dos Pontos de GPS no Trajeto Real */
+        .custom-gps-pin, .custom-gps-time-pin {
+            background: transparent !important;
+            border: none !important;
+        }
+
+        .gps-point-marker {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            pointer-events: auto;
+        }
+
+        .gps-point-dot {
+            width: 10px;
+            height: 10px;
+            background: #d63031;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.45), 0 0 6px rgba(214,48,49,0.7);
+            flex-shrink: 0;
+            transition: transform 0.18s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.18s ease, box-shadow 0.18s ease;
+        }
+
+        .gps-point-marker:hover .gps-point-dot {
+            transform: scale(1.6);
+            background: #ff4757;
+            box-shadow: 0 0 12px #ff4757, 0 2px 6px rgba(0,0,0,0.5);
+        }
+
+        .gps-point-time {
+            display: none !important;
+        }
+
+        /* Leaflet Popups */
+        .leaflet-popup-content-wrapper {
+            border-radius: 14px !important;
+            padding: 6px !important;
+            box-shadow: var(--shadow-md) !important;
+        }
+
+        .custom-popup {
+            padding: 10px;
+            max-width: 280px;
+        }
+
+        .popup-title {
+            font-size: 15px;
+            font-weight: 800;
+            color: var(--dark);
+            margin-bottom: 6px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 4px;
+        }
+
+        .popup-info-row {
+            font-size: 12px;
+            color: #555;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: flex-start;
+            gap: 6px;
+        }
+
+        .popup-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            margin-top: 10px;
+        }
+
+        .popup-btn {
+            padding: 6px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            text-align: center;
+            text-decoration: none;
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+
+        .popup-btn.waze { background: #33ccff; color: #000; }
+        .popup-btn.maps { background: #4285F4; }
+        .popup-btn.whats { background: #25D366; grid-column: span 2; }
+
+        @media (max-width: 768px) {
+            .top-navbar {
+                top: 10px;
+                left: 10px;
+                right: 10px;
+                padding: 8px 12px;
+            }
+            .brand-title {
+                display: none;
+            }
+            .stats-pills {
+                gap: 5px;
+            }
+            .stat-pill {
+                padding: 4px 8px;
+                font-size: 11px;
+            }
+            .sidebar {
+                top: 70px;
+                left: 10px;
+                bottom: 10px;
+                width: calc(100vw - 20px);
+            }
+        }
+    </style>
+    <!-- VPS Socket.IO & Adapter (Primeiros Scripts) -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="js/vps-adapter.js"></script>
+</head>
+
+<body>
+    <div id="app-container">
+        <!-- Barra Superior Flutuante -->
+        <nav class="top-navbar">
+            <div class="brand-section">
+                <img src="logo.png" alt="Canoas Gás" class="brand-logo" onerror="this.style.display='none'">
+                <div class="brand-title">🗺️ Mapa de Entregas</div>
+            </div>
+
+            <div class="stats-pills">
+                <div class="stat-pill online" title="Entregadores Online">
+                    <span>🛵</span>
+                    <span id="contadorOnline">0 Online</span>
+                </div>
+                <div class="stat-pill pendentes" title="Pedidos Pendentes">
+                    <span>📦</span>
+                    <span id="contadorPendentes">0 Pendentes</span>
+                </div>
+                <div class="stat-pill rota" title="Pedidos em Rota">
+                    <span>🚀</span>
+                    <span id="contadorRota">0 Em Rota</span>
+                </div>
+            </div>
+
+            <div class="nav-actions">
+                <a href="alertaproximidade.html" class="btn-nav" style="background: linear-gradient(135deg, #25d366, #128c7e); color: white; border-color: rgba(37,211,102,0.4); font-weight: 700;">
+                    <span>📡</span> <span>Radar Zap</span>
+                </a>
+                <button class="btn-nav btn-toggle-sidebar" id="btnToggleSidebar" onclick="toggleSidebar()">
+                    <span>📋</span> <span id="txtToggleSidebar">Painel</span>
+                </button>
+                <a href="index.html" class="btn-nav btn-voltar">
+                    <span>⬅️</span> <span>Voltar</span>
+                </a>
+            </div>
+        </nav>
+
+        <!-- Sidebar / Painel Lateral Interativo -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h3><span>🧭</span> Gestão de Rotas & Entregadores</h3>
+                <button onclick="toggleSidebar()" style="background:none; border:none; color:white; font-size:18px; cursor:pointer;">&times;</button>
+            </div>
+
+            <!-- Filtros -->
+            <div class="sidebar-filters">
+                <div class="filter-row">
+                    <div class="date-filter-container" title="Filtrar pedidos e rotas por data">
+                        <span style="font-size: 14px;">📅</span>
+                        <input type="date" id="filtroData" onchange="window.aoMudarDataFiltro()" title="Data selecionada">
+                        <button type="button" id="btnDataHoje" class="btn-hoje-filtro active" onclick="window.definirDataHoje()" title="Voltar para a data de hoje">Hoje</button>
+                    </div>
+                </div>
+                <div class="filter-row">
+                    <select id="filtroEntregador" onchange="aplicarFiltrosMapa()">
+                        <option value="">🛵 Todos os Entregadores</option>
+                    </select>
+                    <select id="filtroStatus" onchange="aplicarFiltrosMapa()">
+                        <option value="todos">📦 Todos os Status</option>
+                        <option value="pendente" selected>⏳ Pendentes & Em Rota</option>
+                        <option value="concluido">✅ Concluídos</option>
+                        <option value="rota_dia">🛣️ Rota do Dia</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Abas da Sidebar -->
+            <div class="sidebar-tabs">
+                <button class="tab-btn active" id="tabEntregadoresBtn" onclick="trocarAba('entregadores')">🛵 Entregadores (<span id="totalEntregadoresAba">0</span>)</button>
+                <button class="tab-btn" id="tabPedidosBtn" onclick="trocarAba('pedidos')">📦 Pedidos (<span id="totalPedidosAba">0</span>)</button>
+            </div>
+
+            <!-- Conteúdo da Sidebar -->
+            <div class="sidebar-content" id="sidebarContent">
+                <div id="listaEntregadoresContainer"></div>
+                <div id="listaPedidosContainer" style="display: none;"></div>
+            </div>
+        </aside>
+
+        <!-- Card Flutuante de Resumo da Rota do Dia -->
+        <div id="cardResumoRota" class="card-resumo-rota" style="display: none;">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <span style="font-size:22px;">🛣️</span>
+                <div>
+                    <div id="resumoRotaTitulo" style="font-weight:800; font-size:13px; color:#fff;">Rota do Dia</div>
+                    <div id="resumoRotaSubtitulo" style="font-size:11px; color:#dfe6e9;">0 entregas na sequência</div>
+                </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+                <button onclick="window.enquadrarRotaInteira()" style="background:#0984e3; color:white; border:none; padding:7px 14px; border-radius:18px; font-weight:700; font-size:11px; cursor:pointer; display:flex; align-items:center; gap:5px; box-shadow:0 2px 8px rgba(9,132,227,0.4);">
+                    🔍 <span>Enquadrar Rota</span>
+                </button>
+                <button onclick="window.fecharResumoRota()" style="background:none; border:none; color:#b2bec3; font-size:20px; cursor:pointer; line-height:1; padding:0 4px;" title="Fechar aviso">&times;</button>
+            </div>
+        </div>
+
+        <!-- Mapa Fullscreen -->
+        <div id="map"></div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <!-- Firebase SDK (Modular) -->
+    
+</body>
+
+</html>

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Limpeza de Pedidos Antigos</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body { padding: 40px; font-family: 'Poppins', sans-serif; text-align: center; background-color: #f8fafc; }
+        .card { max-width: 500px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h1 { color: #1e293b; font-family: 'Outfit'; margin-bottom: 20px; }
+        p { color: #64748b; margin-bottom: 30px; }
+        button { background: #ef4444; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: 0.2s; }
+        button:hover { background: #dc2626; }
+        button:disabled { background: #94a3b8; cursor: not-allowed; }
+        #status { margin-top: 20px; font-weight: 600; color: #0f172a; }
+    </style>
+    <!-- VPS Socket.IO & Adapter (Primeiros Scripts) -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="js/vps-adapter.js"></script>
+</head>
+<body>
+    <div class="card">
+        <h1>🧹 Arquivar Pedidos</h1>
+        <p>Esta ferramenta pegará todos os pedidos de <strong>ontem para trás</strong> e moverá para uma lista de arquivo no banco de dados. Isso deixará o sistema mais rápido e barato, mantendo apenas os pedidos de hoje na tela principal.</p>
+        <button id="btnArquivar" onclick="iniciarArquivamento()">Arquivar Pedidos Antigos Agora</button>
+        <div id="status"></div>
+    </div>
+
+    
+</body>
+</html>

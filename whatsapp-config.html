@@ -12,6 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="js/logo-png-base64.js"></script>
 
     <style>
         :root {
@@ -231,6 +232,9 @@
             to {bottom: 0; opacity: 0;}
         }
     </style>
+    <!-- VPS Socket.IO & Adapter (Primeiros Scripts) -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="js/vps-adapter.js"></script>
 </head>
 
 <body>
@@ -273,6 +277,66 @@
             </label>
             <div>
                 <strong>Ativar envio automático para o CLIENTE</strong>
+            </div>
+        </div>
+
+        <div class="toggle-container" style="margin-bottom: 10px; background: rgba(37, 211, 102, 0.05); border: 1px solid rgba(37, 211, 102, 0.2);">
+            <label class="switch">
+                <input type="checkbox" id="wp_anexar_logo_cliente" checked onchange="atualizarVisibilidadeBoxLogo()">
+                <span class="slider"></span>
+            </label>
+            <div>
+                <strong>📸 Anexar arquivo com Logo da Canoas Gás para o CLIENTE</strong>
+                <div style="font-size: 12px; color: var(--text-muted); margin-top: 3px;">
+                    Envia o arquivo oficial da logo em anexo no WhatsApp com a mensagem do cliente como legenda (exatamente como o crachá).
+                </div>
+            </div>
+        </div>
+
+        <!-- Seletor e Prévia Visual da Logo -->
+        <div id="boxSeletorLogo" style="background: rgba(255,255,255,0.03); border: 1px dashed rgba(37, 211, 102, 0.3); border-radius: var(--radius-md); padding: 16px; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <label style="font-weight: 700; font-size: 13px; color: #2ecc71; margin: 0; display: flex; align-items: center; gap: 6px;">
+                    <span>🖼️</span> Imagem da Logo que será enviada:
+                </label>
+                <span id="badgeOrigemLogo" style="font-size: 11px; background: rgba(37, 211, 102, 0.15); color: #2ecc71; padding: 2px 8px; border-radius: 6px; font-weight: 600;">Padrão Oficial (logo.png)</span>
+            </div>
+            
+            <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+                <div style="background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 10px; display: flex; align-items: center; justify-content: center; min-width: 120px; height: 80px; box-shadow: 0 4px 12px rgba(0,0,0,0.4);">
+                    <img id="previewLogoCliente" src="logo_whatsapp_16x9.png" style="max-height: 65px; max-width: 140px; object-fit: contain;" alt="Prévia da Logo" onerror="this.src='novo_logo_botijao.jpg'">
+                </div>
+                
+                <div style="flex: 1; min-width: 220px;">
+                    <div style="margin-bottom: 8px;">
+                        <span style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px; font-weight: 600;">Modelos Otimizados para WhatsApp:</span>
+                        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                            <button type="button" onclick="aplicarPresetLogo('horizontal')" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); color: #f1f5f9; padding: 5px 10px; border-radius: 6px; font-size: 11.5px; cursor: pointer;">
+                                📏 Horizontal (16:9)
+                            </button>
+                            <button type="button" onclick="aplicarPresetLogo('stacked')" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); color: #f1f5f9; padding: 5px 10px; border-radius: 6px; font-size: 11.5px; cursor: pointer;">
+                                🔲 Vertical / Grande
+                            </button>
+                            <button type="button" onclick="aplicarPresetLogo('3d')" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); color: #f1f5f9; padding: 5px 10px; border-radius: 6px; font-size: 11.5px; cursor: pointer;">
+                                🔥 3D Botijão Oficial
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 6px;">
+                        <label for="inputUploadLogo" style="background: linear-gradient(135deg, #25d366 0%, #128c7e 100%); color: white; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 4px 10px rgba(37,211,102,0.25);">
+                            📁 Escolher Outra Imagem...
+                        </label>
+                        <input type="file" id="inputUploadLogo" accept="image/*" style="display: none;" onchange="aoSelecionarNovaLogo(event)">
+                        
+                        <button type="button" onclick="restaurarLogoPadrao()" style="background: rgba(255,255,255,0.08); color: var(--text-muted); border: 1px solid rgba(255,255,255,0.15); padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 6px;">
+                            ↺ Restaurar Original
+                        </button>
+                    </div>
+                    <small id="infoArquivoLogo" style="color: var(--text-muted); font-size: 11px; display: block; line-height: 1.4;">
+                        Imagens são automaticamente adaptadas na proporção ideal (16:9) para que nunca sejam cortadas no WhatsApp dos clientes.
+                    </small>
+                </div>
             </div>
         </div>
 
@@ -334,268 +398,6 @@
     <div id="toast">✅ Configurações salvas no Firebase!</div>
 
     <!-- Firebase SDK (Módulos) -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, set, onValue, push, remove, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyB-4XspbY5GalueBG8JGUJ7BfdQvPh8d1c",
-            authDomain: "canoas-gas.firebaseapp.com",
-            databaseURL: "https://canoas-gas-default-rtdb.firebaseio.com",
-            projectId: "canoas-gas",
-            storageBucket: "canoas-gas.firebasestorage.app",
-            messagingSenderId: "657432003828",
-            appId: "1:657432003828:web:40c6eca9096896f955caa1",
-            measurementId: "G-3SMNWNELJ5"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-        const configRef = ref(db, 'configuracoes_whatsapp');
-        const statusServidorRef = ref(db, 'servidor_whatsapp_status');
-        const filaRef = ref(db, 'fila_whatsapp');
-
-        // Templates Default
-        const defMsgCliente = "Olá {{nome_cliente}}! 👋\nSeu pedido de {{produto}} está a caminho.\nEntregador: {{nome_entregador}}";
-        const defMsgEntregador = "🚚 *NOVA ENTREGA*\n\n👤 *Cliente:* {{nome_cliente}}\n📞 *Tel:* {{telefone_cliente}}\n🏘️ *Endereço:* {{endereco}}\n📦 *Produto:* {{produto}}\n💰 *Valor:* {{valor}} - {{forma_pagamento}}\n📝 *Info:* {{info_adc}}";
-
-        function aplicarConfiguracoes(cfg) {
-            if (!cfg) return;
-            if (cfg.wp_url !== undefined) {
-                document.getElementById('wp_url').value = cfg.wp_url;
-                localStorage.setItem('wp_url', cfg.wp_url);
-            }
-            if (cfg.wp_auto_cliente !== undefined) {
-                const ativo = (cfg.wp_auto_cliente === true || cfg.wp_auto_cliente === 'true');
-                document.getElementById('wp_auto_cliente').checked = ativo;
-                localStorage.setItem('wp_auto_cliente', String(ativo));
-            }
-            if (cfg.wp_auto_entregador !== undefined) {
-                const ativo = (cfg.wp_auto_entregador === true || cfg.wp_auto_entregador === 'true');
-                document.getElementById('wp_auto_entregador').checked = ativo;
-                localStorage.setItem('wp_auto_entregador', String(ativo));
-            }
-            if (cfg.wp_msg_cliente !== undefined) {
-                document.getElementById('wp_msg_cliente').value = cfg.wp_msg_cliente;
-                localStorage.setItem('wp_msg_cliente', cfg.wp_msg_cliente);
-            }
-            if (cfg.wp_msg_entregador !== undefined) {
-                document.getElementById('wp_msg_entregador').value = cfg.wp_msg_entregador;
-                localStorage.setItem('wp_msg_entregador', cfg.wp_msg_entregador);
-            }
-        }
-
-        // 1. Carregar configs imediatamente do LocalStorage para abertura sem delay
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('wp_url').value = localStorage.getItem('wp_url') || 'http://localhost:3000/send-message';
-            document.getElementById('wp_auto_cliente').checked = localStorage.getItem('wp_auto_cliente') === 'true';
-            document.getElementById('wp_auto_entregador').checked = localStorage.getItem('wp_auto_entregador') === 'true';
-            document.getElementById('wp_msg_cliente').value = localStorage.getItem('wp_msg_cliente') || defMsgCliente;
-            document.getElementById('wp_msg_entregador').value = localStorage.getItem('wp_msg_entregador') || defMsgEntregador;
-        });
-
-        // 2. Sincronizar em tempo real com o Firebase (se houver alteração em qualquer máquina)
-        onValue(configRef, (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-                aplicarConfiguracoes(data);
-                console.log("☁️ Configurações do WhatsApp carregadas do Firebase:", data);
-            }
-        });
-
-        // 3. Monitor de Status do Servidor no Notebook em Tempo Real
-        let timerVerificaStatus = null;
-        onValue(statusServidorRef, (snapshot) => {
-            const statusData = snapshot.val();
-            const dot = document.getElementById('statusDot');
-            const txt = document.getElementById('statusTextoServidor');
-            const det = document.getElementById('statusDetalheServidor');
-
-            function atualizarVisual() {
-                if (!statusData || !statusData.timestamp) {
-                    dot.style.background = '#e74c3c';
-                    dot.style.boxShadow = '0 0 10px #e74c3c';
-                    txt.innerText = 'Servidor WhatsApp: Offline 🔴';
-                    det.innerText = 'Inicie o arquivo Iniciar_Radar_e_WhatsApp.bat no Notebook.';
-                    return;
-                }
-
-                const diffSegundos = Math.floor((Date.now() - statusData.timestamp) / 1000);
-                if (diffSegundos <= 35 && statusData.status === 'connected') {
-                    dot.style.background = '#2ecc71';
-                    dot.style.boxShadow = '0 0 12px #2ecc71';
-                    txt.innerText = 'Servidor WhatsApp: Online e Conectado 🟢';
-                    det.innerText = `Ativo no Notebook (${statusData.hostname || 'Notebook'}) • Sinal recebido há ${diffSegundos}s.`;
-                } else if (diffSegundos <= 35) {
-                    dot.style.background = '#f39c12';
-                    dot.style.boxShadow = '0 0 12px #f39c12';
-                    txt.innerText = `Servidor WhatsApp: Conectando (${statusData.status}) 🟡`;
-                    det.innerText = 'O servidor está aberto no Notebook, mas aguardando WhatsApp conectar ou QR Code.';
-                } else {
-                    dot.style.background = '#e74c3c';
-                    dot.style.boxShadow = '0 0 10px #e74c3c';
-                    txt.innerText = 'Servidor WhatsApp: Desconectado / Offline 🔴';
-                    det.innerText = `Último sinal visto há ${Math.floor(diffSegundos / 60)} min. Verifique o Notebook.`;
-                }
-            }
-
-            atualizarVisual();
-            if (timerVerificaStatus) clearInterval(timerVerificaStatus);
-            timerVerificaStatus = setInterval(atualizarVisual, 5000);
-        });
-
-        // 4. Monitor da Fila de Mensagens em Tempo Real
-        onValue(filaRef, (snapshot) => {
-            const data = snapshot.val();
-            const tbody = document.getElementById('tabelaFilaCorpo');
-            if (!tbody) return;
-
-            if (!data) {
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px; color: var(--text-muted);">Nenhuma mensagem na fila recentemente.</td></tr>';
-                return;
-            }
-
-            const lista = Object.keys(data).map(k => ({ id: k, ...data[k] }));
-            // Ordenar pelas mais recentes
-            lista.sort((a, b) => (b.criadoEm || 0) - (a.criadoEm || 0));
-            const ultimas = lista.slice(0, 15);
-
-            let html = '';
-            for (const item of ultimas) {
-                const hora = item.criadoEm ? new Date(item.criadoEm).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '--:--';
-                
-                let badgeStatus = '<span style="color: #f39c12; font-weight: 600;">⏳ Na Fila</span>';
-                if (item.status === 'enviado') {
-                    badgeStatus = '<span style="color: #2ecc71; font-weight: 600;">✅ Enviado</span>';
-                } else if (item.status === 'processando') {
-                    badgeStatus = '<span style="color: #3498db; font-weight: 600;">⚙️ Enviando...</span>';
-                } else if (item.status === 'erro' || item.status === 'erro_definitivo') {
-                    badgeStatus = `<span style="color: #e74c3c; font-weight: 600;" title="${item.ultimoErro || ''}">❌ Erro</span>`;
-                }
-
-                const tipoEmoji = item.tipo === 'cliente' ? '👤 Cliente' : (item.tipo === 'entregador' ? '🚚 Entregador' : '💬 Geral');
-
-                html += `
-                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-                        <td style="padding: 8px 12px; color: var(--text-muted);">${hora}</td>
-                        <td style="padding: 8px 12px;">${tipoEmoji}</td>
-                        <td style="padding: 8px 12px; font-weight: 600;">${item.destinatario || item.cliente || '-'}</td>
-                        <td style="padding: 8px 12px; color: var(--text-muted);">${item.telefone || '-'}</td>
-                        <td style="padding: 8px 12px;">${badgeStatus}</td>
-                    </tr>
-                `;
-            }
-
-            tbody.innerHTML = html;
-        });
-
-        // 5. Função de Teste da Fila
-        window.testarEnvioFila = async function() {
-            const tel = prompt("Digite o número de telefone para teste (DDD + Número):\nExemplo: 51982557807");
-            if (!tel) return;
-
-            const telLimpo = tel.replace(/\D/g, '');
-            if (telLimpo.length < 10) {
-                alert("Número inválido! Digite com DDD (mínimo 10 dígitos).");
-                return;
-            }
-
-            try {
-                const novaRef = push(filaRef);
-                await set(novaRef, {
-                    telefone: '55' + telLimpo,
-                    mensagem: "🧪 *Teste de Mensagem Canoas Gás*\n\nSeu servidor de WhatsApp via Nuvem está funcionando perfeitamente a partir de qualquer dispositivo! 🚀",
-                    tipo: 'teste',
-                    destinatario: 'Teste',
-                    status: 'pendente',
-                    criadoEm: Date.now(),
-                    origem: 'teste_config'
-                });
-
-                const toast = document.getElementById("toast");
-                toast.innerText = "🚀 Mensagem de teste colocada na fila! O notebook enviará em instantes.";
-                toast.style.background = "#25d366";
-                toast.className = "show";
-                setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 4000);
-            } catch (e) {
-                alert("Erro ao enfileirar teste: " + e.message);
-            }
-        };
-
-        // 6. Limpar Mensagens Concluídas da Fila
-        window.limparFilaConcluida = async function() {
-            if (!confirm("Deseja limpar as mensagens já enviadas da lista?")) return;
-            try {
-                const snap = await get(filaRef);
-                const dados = snap.val();
-                if (!dados) return;
-
-                for (const [id, item] of Object.entries(dados)) {
-                    if (item.status === 'enviado' || item.status === 'invalido' || item.status === 'erro_definitivo') {
-                        await remove(ref(db, `fila_whatsapp/${id}`));
-                    }
-                }
-
-                const toast = document.getElementById("toast");
-                toast.innerText = "🧹 Fila de mensagens limpa!";
-                toast.style.background = "#3498db";
-                toast.className = "show";
-                setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
-            } catch (e) {
-                alert("Erro ao limpar: " + e.message);
-            }
-        };
-
-        // 7. Salvar no Firebase Realtime Database e LocalStorage
-        window.salvarConfiguracoes = async function () {
-            const btn = document.querySelector('.btn-salvar');
-            if (btn) {
-                btn.disabled = true;
-                btn.innerText = "Salvando no Firebase...";
-            }
-
-            const wpUrl = document.getElementById('wp_url').value.trim() || 'http://localhost:3000/send-message';
-            const autoCli = document.getElementById('wp_auto_cliente').checked;
-            const autoEnt = document.getElementById('wp_auto_entregador').checked;
-            const msgCli = document.getElementById('wp_msg_cliente').value;
-            const msgEnt = document.getElementById('wp_msg_entregador').value;
-
-            // Salva no LocalStorage local
-            localStorage.setItem('wp_url', wpUrl);
-            localStorage.setItem('wp_auto_cliente', String(autoCli));
-            localStorage.setItem('wp_auto_entregador', String(autoEnt));
-            localStorage.setItem('wp_msg_cliente', msgCli);
-            localStorage.setItem('wp_msg_entregador', msgEnt);
-
-            const payload = {
-                wp_url: wpUrl,
-                wp_auto_cliente: autoCli,
-                wp_auto_entregador: autoEnt,
-                wp_msg_cliente: msgCli,
-                wp_msg_entregador: msgEnt,
-                atualizadoEm: Date.now()
-            };
-
-            const toast = document.getElementById("toast");
-
-            try {
-                await set(configRef, payload);
-                console.log("✅ Configurações salvas no Firebase com sucesso!");
-                toast.innerText = "✅ Configurações salvas no Firebase com sucesso!";
-                toast.style.background = "#25d366";
-            } catch (err) {
-                console.error("Erro ao salvar no Firebase:", err);
-                toast.innerText = "⚠️ Salvo no navegador. Erro no Firebase: " + (err.message || err);
-                toast.style.background = "#e67e22";
-            } finally {
-                if (btn) {
-                    btn.disabled = false;
-                    btn.innerText = "Salvar Configurações";
-                }
-                toast.className = "show";
-                setTimeout(function () { toast.className = toast.className.replace("show", ""); }, 3500);
-            }
-        };
-    </script>
+    
 </body>
 </html>

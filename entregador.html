@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>Painel do Entregador - Canoas Gás</title>
+
+    <link rel="icon" type="image/x-icon"
+        href="https://github.com/otaviogabrielbh-cloud/projeto-gas/raw/refs/heads/main/LOGO.ico">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="mobile-cards.css">
+    <link rel="manifest" href="manifest.json">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Poppins:wght@300;400;600&display=swap"
+        rel="stylesheet">
+
+    <style>
+        .btn-editar,
+        .btn-excluir,
+        .col-retencao,
+        #topo {
+            display: none !important;
+        }
+
+        #tabelaPedidos {
+            display: none !important;
+        }
+
+        #containerCardsMobile {
+            display: flex !important;
+        }
+
+        .header-historico h3 {
+            color: #6c5ce7;
+        }
+
+        .fixed-controls {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            z-index: 2000;
+            display: flex;
+            justify-content: space-between;
+            pointer-events: none;
+        }
+
+        .fixed-controls button {
+            pointer-events: auto;
+            padding: 12px 20px;
+            font-size: 15px;
+            font-weight: 700;
+            border-radius: var(--radius-md);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-vender-top {
+            background: #2ecc71 !important;
+            color: white !important;
+        }
+
+        .btn-logout-top {
+            background: #ff4757 !important;
+            color: white !important;
+        }
+
+        body {
+            padding-top: 75px;
+        }
+
+        @media (max-width: 600px) {
+            .header-historico {
+                flex-direction: column;
+                align-items: flex-start !important;
+                gap: 15px;
+            }
+
+            #containerFiltroEntregador {
+                width: 100%;
+                flex-wrap: wrap;
+                justify-content: flex-start;
+            }
+
+            #delivererTitle {
+                font-size: 1.1rem;
+                width: 100%;
+            }
+
+            .contador-pedidos {
+                display: inline-block;
+                margin-top: 5px;
+            }
+
+            .fixed-controls {
+                top: 5px;
+                right: 5px;
+            }
+        }
+
+        /* Estilos para Foto do Comprovante */
+        .btn-foto-anexo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            background: #0984e3;
+            color: white;
+            padding: 12px;
+            border-radius: 10px;
+            border: none;
+            width: 100%;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 10px 0;
+            transition: all 0.2s;
+        }
+
+        .btn-foto-anexo:active {
+            transform: scale(0.98);
+            background: #74b9ff;
+        }
+
+        .preview-foto-container {
+            position: relative;
+            margin: 10px 0;
+            text-align: center;
+            border: 2px dashed #dfe6e9;
+            border-radius: 10px;
+            padding: 5px;
+            background: #fdfdfd;
+        }
+
+        .preview-foto-img {
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-remove-foto {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: #ff7675;
+            color: white;
+            border: none;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+    </style>
+    <!-- VPS Socket.IO & Adapter (Primeiros Scripts) -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="js/vps-adapter.js"></script>
+</head>
+
+<body data-role="entregador">
+
+    <div class="fixed-controls">
+        <button class="btn-vender-top" onclick="window.abrirModalVenda()" title="Efetuar Venda">💵 Vender</button>
+        <button class="btn-logout-top" onclick="window.logout()" title="Sair">🚪 Sair</button>
+    </div>
+
+    <div class="container historico-container">
+        <div class="header-historico">
+            <h3 id="delivererTitle">📦 Meus Pedidos <span id="totalPedidos" class="contador-pedidos">0</span> <small
+                    id="refreshTimer" style="font-size: 11px; color: #888; margin-left:10px; font-weight:normal;">🔄
+                    30s</small></h3>
+            <div id="containerFiltroEntregador" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <label style="margin:0; font-size: 13px; color: #666;">Status:</label>
+                <select id="filtroStatusEntregador" onchange="window.renderizarTabelaPorData()">
+                    <option value="pendente">🚀 PENDENTES</option>
+                    <option value="concluido">✅ CONCLUÍDOS</option>
+                </select>
+                <label style="margin:0; font-size: 13px; color: #666;">Ordem:</label>
+                <select id="filtroOrdemEntregador" onchange="window.renderizarTabelaPorData()">
+                    <option value="prioridade">⚡ Prioridade / Hora</option>
+                    <option value="proximidade">📍 Mais Próximos (GPS)</option>
+                </select>
+                <button id="btnNotificacaoPerm" onclick="window.ativarAlertasPrioritarios()"
+                    style="padding: 6px 12px; font-size: 13px; background: #6c5ce7; color: white; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; box-shadow: 0 4px 10px rgba(108, 92, 231, 0.4);">
+                    🔔 Ativar Alertas
+                </button>
+                <button onclick="window.testarAlerta()"
+                    style="padding: 6px 12px; font-size: 13px; background: #dfe6e9; color: #2d3436; border-radius: 8px; border: none; cursor: pointer; font-weight: bold;">
+                    🔊 Testar
+                </button>
+            </div>
+        </div>
+
+        <!-- Diagnostic (Optional, hidden by default but useful) -->
+        <div id="painelDiagnostico"
+            style="display:none; padding: 10px; background: #2d3436; color: white; font-size: 11px; margin: 10px 0; border-radius: 8px;">
+            <div style="display: flex; justify-content: space-around; text-align: center;">
+                <div>GPS<br><span id="diagGPS" style="color: #ff7675;">🔴 OFF</span></div>
+                <div>WAKE LOCK<br><span id="diagWake" style="color: #ff7675;">🔴 OFF</span></div>
+                <div>AUDIO/FUNDO<br><span id="diagAudio" style="color: #ff7675;">🔴 OFF</span></div>
+                <div>PEDIDOS<br><span id="diagPedidos" style="font-weight: bold;">0</span></div>
+            </div>
+        </div>
+
+            <div id="containerCardsMobile" class="cards-mobile-container"></div>
+            <!-- Hidden table for logic reuse if needed -->
+            <table id="tabelaPedidos" style="display:none;">
+                <tbody id="corpoTabela"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modals Ported from index.html -->
+    <div id="modalPedidoDetalhes" class="modal">
+        <div class="modal-content" style="max-width: 450px;">
+            <div class="modal-header">
+                <h3>📋 Detalhes da Entrega</h3>
+                <span class="close"
+                    onclick="document.getElementById('modalPedidoDetalhes').style.display='none'">&times;</span>
+            </div>
+            <div id="detalhesConteudo"></div>
+            <div class="actions-footer">
+                <button id="btnIniciarEntrega" class="btn-concluir" style="background: var(--success-color);">🛵 Iniciar
+                    Entrega</button>
+                <button id="btnConcluirEntrega" class="btn-concluir">✅ Concluir</button>
+                <button id="btnCancelarEntrega" class="btn-cancelar-entrega">❌ Cancelar</button>
+            </div>
+            <button class="btn-limpar" onclick="document.getElementById('modalPedidoDetalhes').style.display='none'"
+                style="display: block; margin-top: 15px; width: 100%; min-width: unset;">Voltar</button>
+        </div>
+    </div>
+
+    <div id="modalFinalizarEntrega" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3>💰 Finalizar Entrega</h3>
+                <span class="close"
+                    onclick="document.getElementById('modalFinalizarEntrega').style.display='none'">&times;</span>
+            </div>
+            <div id="finalizarConteudo">
+                <label>Confirme a Forma de Pagamento:</label>
+                <select id="pagamentoFinalizar" onchange="window.toggleQRCodePix(this.value)">
+                    <option value="">-- SELECIONE --</option>
+                    <option value="DINHEIRO">DINHEIRO</option>
+                    <option value="PIX">PIX</option>
+                    <option value="DÉBITO">DÉBITO</option>
+                    <option value="CRÉDITO">CRÉDITO</option>
+                    <option value="A PRAZO">A PRAZO</option>
+                    <option value="ON LINE">ON LINE</option>
+                    <option value="VALE GÁS/ÁGUA">VALE GÁS/ÁGUA</option>
+                    <option value="PIX+CARTÃO">PIX+CARTÃO</option>
+                    <option value="PIX+DINHEIRO">PIX+DINHEIRO</option>
+                    <option value="DINHEIRO+CARTÃO">DINHEIRO+CARTÃO</option>
+                    <option value="GAS DO POVO">GAS DO POVO</option>
+                    <option value="PESQUISA">PESQUISA</option>
+                    <option value="OUTRO">OUTRO</option>
+                </select>
+
+                <!-- QR Code PIX -->
+                <div id="qrCodePixContainer"
+                    style="display: none; text-align: center; margin: 10px 0; padding: 15px; background: #f5f5f5; border-radius: 10px; border: 1px solid #ddd;">
+                    <p style="margin: 0 0 10px 0; font-weight: bold; color: #00a884; font-size: 14px;">📱 QR Code PIX
+                    </p>
+                    <img src="https://github.com/otaviogabrielbh-cloud/projeto-gas/raw/refs/heads/main/PIX.png"
+                        alt="QR Code PIX"
+                        style="max-width: 200px; width: 100%; border: 3px solid #00a884; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+                </div>
+
+                <!-- Foto do Comprovante -->
+                <div id="containerFotoComprovante" style="display: none;">
+                    <label>📸 Comprovante de Pagamento:</label>
+                    <button type="button" class="btn-foto-anexo"
+                        onclick="document.getElementById('inputFotoComprovante').click()">
+                        <span id="labelBotaoFoto">📷 Tirar Foto do Comprovante</span>
+                    </button>
+                    <input type="file" id="inputFotoComprovante" accept="image/*" capture="camera" style="display:none"
+                        onchange="window.processarFotoComprovante(this)">
+
+                    <div id="previewFotoComprovante" class="preview-foto-container" style="display: none;">
+                        <button type="button" class="btn-remove-foto" onclick="window.removerFotoComprovante()">×</button>
+                        <img id="imgPreviewComprovante" class="preview-foto-img" src="" alt="Preview">
+                        <p style="font-size: 10px; color: #888; margin-top: 5px;">✅ Foto processada com marca d'água</p>
+                    </div>
+                </div>
+
+                <label>Observação da Entrega (Opcional):</label>
+                <textarea id="obsFinalizar" placeholder="Ex: Deixou com o vizinho, porteiro..."></textarea>
+            </div>
+            <div class="actions-footer">
+                <button id="btnConfirmarFinalizacao" class="btn-concluir">Confirmar</button>
+                <button class="btn-limpar"
+                    onclick="document.getElementById('modalFinalizarEntrega').style.display='none'">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Venda Direta -->
+    <div id="modalVendaDireta" class="modal">
+        <div class="modal-content" style="max-width: 450px;">
+            <div class="modal-header">
+                <h3>💵 Registrar Venda</h3>
+                <span class="close"
+                    onclick="document.getElementById('modalVendaDireta').style.display='none'">&times;</span>
+            </div>
+            <div id="vendaConteudo" style="padding: 10px 0;">
+                <label>👤 Nome do Cliente:</label>
+                <input type="text" id="vendaCliente" placeholder="Digite o nome..." list="listaClientesVenda"
+                    style="width: 100%; margin-bottom: 15px;">
+                <datalist id="listaClientesVenda"></datalist>
+
+                <label>📞 Telefone:</label>
+                <input type="text" id="vendaTelefone" placeholder="(00) 00000-0000" maxlength="15"
+                    list="listaTelefonesVenda" oninput="window.mascaraTelefoneVenda(this)"
+                    style="width: 100%; margin-bottom: 15px;">
+                <datalist id="listaTelefonesVenda"></datalist>
+
+                <label>🛒 Canal de Venda:</label>
+                <select id="vendaCanal" style="width: 100%; margin-bottom: 15px;">
+                    <option value="VENDA MOBILE">VENDA MOBILE</option>
+                </select>
+
+                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                    <div style="flex: 0 0 100px;">
+                        <label>🔢 Qtd:</label>
+                        <input type="number" id="vendaQtd" value="1" min="1"
+                            style="width: 100%; text-align: center; font-weight: 800;">
+                    </div>
+                    <div style="flex: 1;">
+                        <label>📦 Produto:</label>
+                        <select id="vendaProduto" style="width: 100%;">
+                            <option value="Gás 13kg">Gás 13kg-SUPERGASBRAS</option>
+                            <option value="Água Mineral-20 litros">Água Mineral-20 litros</option>
+                            <option value="Botijão 45kg">Botijão 45kg-SUPERGASBRAS</option>
+                            <option value="Botijão 13kg completo">Botijão 13kg completo</option>
+                            <option value="Água Mineral completa">Água Mineral completa</option>
+                            <option value="Manutenção">Manutenção</option>
+                            <option value="Registro de Gás">Registro de Gás</option>
+                            <option value="Botijão completo ">Botijão completo</option>
+                            <option value="Registro de Gás + Mangueira">Registro de Gás + Mangueira</option>
+                            <option value="Botijão 13kg completo + Mangueira">Botijão 13kg completo + Mangueira</option>
+                            <option value="Botijão 13kg completo + Registro de Gás">Botijão 13kg completo + Registro de
+                                Gás</option>
+                            <option value="Botijão 13kg completo + Registro de Gás + Mangueira">Botijão 13kg completo +
+                                Registro de Gás + Mangueira</option>
+                        </select>
+                    </div>
+                </div>
+
+                <label>💳 Forma de Pagamento:</label>
+                <select id="vendaPagamento" style="width: 100%; margin-bottom: 15px;"
+                    onchange="window.toggleQRCodePixVenda(this.value)">
+                    <option value="">-- SELECIONE --</option>
+                    <option value="DINHEIRO">DINHEIRO</option>
+                    <option value="PIX">PIX</option>
+                    <option value="DÉBITO">DÉBITO</option>
+                    <option value="CRÉDITO">CRÉDITO</option>
+                    <option value="A PRAZO">A PRAZO</option>
+                    <option value="ON LINE">ON LINE</option>
+                    <option value="VALE GÁS/ÁGUA">VALE GÁS/ÁGUA</option>
+                    <option value="PIX+CARTÃO">PIX+CARTÃO</option>
+                    <option value="PIX+DINHEIRO">PIX+DINHEIRO</option>
+                    <option value="DINHEIRO+CARTÃO">DINHEIRO+CARTÃO</option>
+                    <option value="GAS DO POVO">GAS DO POVO</option>
+                    <option value="PESQUISA">PESQUISA</option>
+                    <option value="OUTRO">OUTRO</option>
+                </select>
+
+                <!-- QR Code PIX (Venda Direta) -->
+                <div id="qrCodePixVendaContainer"
+                    style="display: none; text-align: center; margin: 10px 0; padding: 15px; background: #f5f5f5; border-radius: 10px; border: 1px solid #ddd;">
+                    <p style="margin: 0 0 10px 0; font-weight: bold; color: #00a884; font-size: 14px;">📱 QR Code PIX
+                    </p>
+                    <img src="https://github.com/otaviogabrielbh-cloud/projeto-gas/raw/refs/heads/main/PIX.png"
+                        alt="QR Code PIX"
+                        style="max-width: 200px; width: 100%; border: 3px solid #00a884; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+                </div>
+
+                <!-- Foto do Comprovante (Venda Direta) -->
+                <div id="containerFotoVenda" style="display: none;">
+                    <label>📸 Comprovante de Pagamento:</label>
+                    <button type="button" class="btn-foto-anexo"
+                        onclick="document.getElementById('inputFotoVenda').click()">
+                        <span id="labelBotaoFotoVenda">📷 Tirar Foto do Comprovante</span>
+                    </button>
+                    <input type="file" id="inputFotoVenda" accept="image/*" capture="camera" style="display:none"
+                        onchange="window.processarFotoComprovante(this, 'Venda')">
+
+                    <div id="previewFotoVenda" class="preview-foto-container" style="display: none;">
+                        <button type="button" class="btn-remove-foto" onclick="window.removerFotoComprovante('Venda')">×</button>
+                        <img id="imgPreviewVenda" class="preview-foto-img" src="" alt="Preview">
+                        <p style="font-size: 10px; color: #888; margin-top: 5px;">✅ Foto processada com marca d'água</p>
+                    </div>
+                </div>
+
+                <label>💵 Valor (R$):</label>
+                <input type="text" id="vendaValor" placeholder="0,00" oninput="window.mascaraMoedaVenda(this)"
+                    style="width: 100%; margin-bottom: 15px;">
+            </div>
+            <div class="actions-footer">
+                <button id="btnConfirmarVenda" class="btn-concluir" onclick="window.salvarVendaDireta()">Confirmar
+                    Venda</button>
+                <button class="btn-limpar"
+                    onclick="document.getElementById('modalVendaDireta').style.display='none'">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="msgCopiado" class="success-msg" style="z-index: 3000; top: 10px;">Ação realizada com sucesso! ✅</div>
+
+    <script>
+        // --- Deliverer-Specific UI & Session Logic ---
+        window.logout = function () {
+            if (confirm("Deseja sair do sistema?")) {
+                localStorage.clear();
+                location.href = 'index.html';
+            }
+        }
+
+        window.verificarSessao = function () {
+            const role = localStorage.getItem('userRole');
+            const userName = localStorage.getItem('userName');
+            if (role !== 'entregador') {
+                location.href = 'index.html';
+                return;
+            }
+            document.getElementById('delivererTitle').innerHTML = `📦 Meus Pedidos (${userName}) <span id="totalPedidos" class="contador-pedidos">0</span> <small id="refreshTimer" style="font-size: 11px; color: #888; margin-left:10px; font-weight:normal;">🔄 30s</small>`;
+            window.solicitarWakeLock();
+            window.iniciarKeepAlive();
+            window.iniciarRastreamento();
+
+            if (window.iniciarEscutaTempoReal) window.iniciarEscutaTempoReal();
+        }
+
+        function atualizarPainelDiag(chave, status, cor) {
+            const el = document.getElementById('diag' + chave);
+            if (el) {
+                el.innerText = status;
+                el.style.color = cor;
+            }
+        }
+
+        // GPS Tracking & Proximidade
+        let watchId = null;
+        let gpsHeartbeatId = null;
+        window.posicaoEntregadorAtual = null;
+
+        // Tentar carregar última posição do cache imediatamente
+        try {
+            const cachedPos = localStorage.getItem('entregador_ultima_pos');
+            if (cachedPos) window.posicaoEntregadorAtual = JSON.parse(cachedPos);
+        } catch (e) {}
+
+        window.ultimaPosicaoGravadaHistorico = window.ultimaPosicaoGravadaHistorico || null;
+
+        function getHojeLocalISO() {
+            const d = new Date();
+            const local = new Date(d.getTime() - (d.getTimezoneOffset() * 60000));
+            return local.toISOString().split('T')[0];
+        }
+
+        window.gravarPontoHistoricoGPS = function (evento = 'manual', pedidoId = null) {
+            const nome = localStorage.getItem('userName');
+            if (!nome || !window.firebasePush || !window.remoteDb || !window.firebaseRef) return;
+            const pos = window.posicaoEntregadorAtual;
+            if (!pos || !pos.lat || !pos.lng) return;
+            const agora = Date.now();
+            const dataHoje = getHojeLocalISO();
+            window.firebasePush(window.firebaseRef(window.remoteDb, `historico_gps/${nome}/${dataHoje}`), {
+                lat: pos.lat,
+                lng: pos.lng,
+                accuracy: pos.accuracy || 0,
+                speed: pos.speed || 0,
+                timestamp: agora,
+                evento: evento,
+                pedidoId: pedidoId || null
+            });
+        };
+
+        let gpsWatchdogId = null;
+        window.ultimoGpsRecebidoTimestamp = 0;
+
+        function processarNovaPosicaoGPS(pos, eventoForcado = null, pedidoIdForcado = null) {
+            if (!pos || !pos.coords) return;
+            const { latitude, longitude, accuracy, speed, heading } = pos.coords;
+
+            window.posicaoEntregadorAtual = {
+                lat: latitude,
+                lng: longitude,
+                accuracy: accuracy || 0,
+                speed: speed || 0,
+                heading: heading || 0,
+                timestamp: Date.now()
+            };
+            window.ultimoGpsRecebidoTimestamp = Date.now();
+
+            try {
+                localStorage.setItem('entregador_ultima_pos', JSON.stringify({ lat: latitude, lng: longitude }));
+            } catch (e) {}
+
+            atualizarPainelDiag('GPS', '🟢 ON', '#55efc4');
+
+            const nome = localStorage.getItem('userName');
+            if (nome && window.firebaseUpdate && window.remoteDb && window.firebaseRef) {
+                const updateData = {
+                    lat: latitude,
+                    lng: longitude,
+                    accuracy: accuracy || 0,
+                    speed: speed || 0,
+                    heading: heading || 0,
+                    online: true,
+                    ultimaVez: Date.now(),
+                    nome: nome
+                };
+                window.firebaseUpdate(window.firebaseRef(window.remoteDb, `status_entregadores/${nome}`), updateData);
+
+                // Registrar histórico de rota efetiva (linha vermelha no mapa)
+                const agora = Date.now();
+                const dataHoje = getHojeLocalISO();
+                let registrarPonto = false;
+
+                if (eventoForcado) {
+                    registrarPonto = true;
+                } else if (!window.ultimaPosicaoGravadaHistorico) {
+                    registrarPonto = true;
+                } else {
+                    const distCalc = typeof window.calcularDistanciaMetros === 'function'
+                        ? window.calcularDistanciaMetros(window.ultimaPosicaoGravadaHistorico.lat, window.ultimaPosicaoGravadaHistorico.lng, latitude, longitude)
+                        : 100;
+                    const distM = (distCalc !== null && !isNaN(distCalc)) ? distCalc : 100;
+                    const tempoMs = agora - window.ultimaPosicaoGravadaHistorico.timestamp;
+
+                    // Critérios de gravação de ponto:
+                    // 1. Deslocamento de 12 metros ou mais (moto em movimento)
+                    // 2. Ou intervalo de 20s com deslocamento mínimo de 3 metros (curvas/trânsito lento)
+                    // 3. Ou intervalo de 40s (batimento de presença para não criar lacunas de sinal)
+                    if (distM >= 12 || (tempoMs >= 20000 && distM >= 3) || tempoMs >= 40000) {
+                        registrarPonto = true;
+                    }
+                }
+
+                if (registrarPonto && window.firebasePush) {
+                    window.ultimaPosicaoGravadaHistorico = { lat: latitude, lng: longitude, timestamp: agora };
+                    const pontoHist = {
+                        lat: latitude,
+                        lng: longitude,
+                        timestamp: agora,
+                        speed: speed || 0,
+                        accuracy: accuracy || 0
+                    };
+                    if (eventoForcado) pontoHist.evento = eventoForcado;
+                    if (pedidoIdForcado) pontoHist.pedidoId = pedidoIdForcado;
+
+                    window.firebasePush(window.firebaseRef(window.remoteDb, `historico_gps/${nome}/${dataHoje}`), pontoHist);
+                }
+            }
+
+            // Atualizar distâncias e ordenação se a função estiver disponível
+            if (typeof window.atualizarDistanciasUI === 'function') {
+                window.atualizarDistanciasUI();
+            }
+        }
+
+        // Forçar leitura imediata de GPS (chamado ao finalizar/iniciar entrega ou acordar tela)
+        window.forcarCapturaGPSImediata = function (evento = 'imediato', pedidoId = null) {
+            if (!('geolocation' in navigator)) return;
+            navigator.geolocation.getCurrentPosition(
+                (pos) => processarNovaPosicaoGPS(pos, evento, pedidoId),
+                (err) => {
+                    console.warn("Aviso na leitura prioritária de GPS, tentando precisão padrão:", err);
+                    // Fallback imediato com enableHighAccuracy: false para redes móveis/torre
+                    navigator.geolocation.getCurrentPosition(
+                        (pos2) => processarNovaPosicaoGPS(pos2, evento, pedidoId),
+                        null,
+                        { enableHighAccuracy: false, timeout: 6000, maximumAge: 15000 }
+                    );
+                },
+                { enableHighAccuracy: true, timeout: 7000, maximumAge: 0 }
+            );
+        };
+
+        // Recriar o Watcher de GPS (resolve travamentos silenciosos do navegador no Android)
+        function reiniciarWatcherGPS() {
+            if (!('geolocation' in navigator)) return;
+            if (watchId !== null) {
+                try { navigator.geolocation.clearWatch(watchId); } catch (e) {}
+                watchId = null;
+            }
+
+            try {
+                watchId = navigator.geolocation.watchPosition(
+                    (pos) => {
+                        window.ultimoGpsRecebidoTimestamp = Date.now();
+                        processarNovaPosicaoGPS(pos);
+                    },
+                    (err) => {
+                        console.warn("GPS watchPosition aviso:", err);
+                        if (err.code === 1) {
+                            atualizarPainelDiag('GPS', '🔴 NEGADO', '#ff7675');
+                        } else {
+                            atualizarPainelDiag('GPS', '🟠 TENTANDO', '#fab1a0');
+                            // Se der timeout (code 3) ou falha de satélite, dispara recuperação
+                            navigator.geolocation.getCurrentPosition(
+                                (posRecup) => processarNovaPosicaoGPS(posRecup),
+                                null,
+                                { enableHighAccuracy: false, timeout: 8000, maximumAge: 15000 }
+                            );
+                        }
+                    },
+                    { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+                );
+            } catch (e) {
+                console.error("Erro ao reiniciar watchPosition:", e);
+            }
+        }
+
+        window.iniciarRastreamento = async function () {
+            const nome = localStorage.getItem('userName');
+            if (!nome) return;
+            if (!('geolocation' in navigator)) {
+                atualizarPainelDiag('GPS', '❌ INDISPONÍVEL', '#ff7675');
+                return;
+            }
+
+            // Solicitar permissão de GPS explicitamente (necessário para Android)
+            try {
+                const permStatus = await navigator.permissions.query({ name: 'geolocation' });
+                if (permStatus.state === 'denied') {
+                    atualizarPainelDiag('GPS', '🔴 BLOQUEADO', '#ff7675');
+                    alert('📍 O GPS está bloqueado!\n\nPor favor, ative a permissão de Localização nas configurações do app para o rastreamento funcionar.');
+                    return;
+                }
+                permStatus.onchange = () => {
+                    if (permStatus.state === 'granted') {
+                        console.log('✅ Permissão de GPS concedida!');
+                        reiniciarWatcherGPS();
+                    }
+                };
+            } catch (e) {
+                console.warn('Permissions API indisponível, tentando GPS direto:', e);
+            }
+
+            reiniciarWatcherGPS();
+
+            // 1. Leitura inicial imediata
+            window.forcarCapturaGPSImediata('inicio_rastreamento');
+
+            // 2. Reforço periódico (Heartbeat) de GPS a cada 15s para garantir que nunca pare
+            if (gpsHeartbeatId) clearInterval(gpsHeartbeatId);
+            gpsHeartbeatId = setInterval(() => {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => processarNovaPosicaoGPS(pos),
+                    (err) => {
+                        // Tentar fallback com precisão padrão
+                        navigator.geolocation.getCurrentPosition(
+                            (pos2) => processarNovaPosicaoGPS(pos2),
+                            null,
+                            { enableHighAccuracy: false, timeout: 6000, maximumAge: 10000 }
+                        );
+                    },
+                    { enableHighAccuracy: true, timeout: 8000, maximumAge: 2000 }
+                );
+            }, 15000);
+
+            // 3. WATCHDOG ANTI-TRAVAMENTO:
+            // A cada 20s, se o app não recebeu NENHUM ponto GPS nos últimos 25s, reinicia o watcher e força leitura
+            if (gpsWatchdogId) clearInterval(gpsWatchdogId);
+            gpsWatchdogId = setInterval(() => {
+                const agora = Date.now();
+                const tempoSemGPS = agora - (window.ultimoGpsRecebidoTimestamp || 0);
+
+                if (tempoSemGPS > 25000 && window.ultimoGpsRecebidoTimestamp > 0) {
+                    console.warn(`⚠️ GPS Watchdog: Sem dados há ${Math.round(tempoSemGPS / 1000)}s. Reiniciando rastreador...`);
+                    atualizarPainelDiag('GPS', '🔄 RECUPERANDO', '#f39c12');
+                    reiniciarWatcherGPS();
+                    window.forcarCapturaGPSImediata('watchdog_recuperacao');
+                }
+            }, 20000);
+
+            // Ativar Serviço Nativo Android em Segundo Plano se disponível
+            try {
+                if (window.AndroidNativeLocation && typeof window.AndroidNativeLocation.startBackgroundTracking === 'function') {
+                    window.AndroidNativeLocation.startBackgroundTracking(nome);
+                    console.log("🚀 Foreground Service nativo Android ativado para:", nome);
+                    atualizarPainelDiag('Wake', '🟢 2º PLANO', '#55efc4');
+                }
+            } catch (e) {
+                console.warn("Aviso ao iniciar serviço nativo Android:", e);
+            }
+        };
+
+        // Cálculo de Distância Geodésica (Haversine)
+        window.calcularDistanciaMetros = function (lat1, lon1, lat2, lon2) {
+            if (lat1 === undefined || lon1 === undefined || lat2 === undefined || lon2 === undefined) return null;
+            if (lat1 === 0 && lon1 === 0) return null;
+            if (lat2 === 0 && lon2 === 0) return null;
+
+            const R = 6371e3; // Raio da Terra em metros
+            const φ1 = lat1 * Math.PI / 180;
+            const φ2 = lat2 * Math.PI / 180;
+            const Δφ = (lat2 - lat1) * Math.PI / 180;
+            const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+            const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                Math.cos(φ1) * Math.cos(φ2) *
+                Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c; // Distância em metros
+        };
+
+        window.formatarDistancia = function (metros) {
+            if (metros === null || metros === undefined || isNaN(metros)) return '';
+            if (metros < 1000) {
+                return `${Math.round(metros)} m`;
+            }
+            return `${(metros / 1000).toFixed(1)} km`;
+        };
+
+        // Cache e Geocodificação Inteligente de Endereços
+        const CACHE_GEO_PREFIX = 'geo_cache_v2_';
+        window.coordenadasMemoriaCache = {};
+
+        window.obterCoordenadasEndereco = async function (endereco) {
+            if (!endereco || typeof endereco !== 'string') return null;
+
+            // Limpar complementos e caracteres especiais
+            const cleanAddr = endereco
+                .replace(/\b(apto|apartamento|bloco|casa|fundos|sala|loja|quadra|lote|portaria)\b.*$/i, '')
+                .replace(/[^\w\s]/gi, ' ')
+                .replace(/\s+/g, ' ')
+                .trim()
+                .toUpperCase();
+
+            if (!cleanAddr) return null;
+
+            if (window.coordenadasMemoriaCache[cleanAddr]) {
+                return window.coordenadasMemoriaCache[cleanAddr];
+            }
+
+            const cacheKey = CACHE_GEO_PREFIX + cleanAddr.replace(/[^A-Z0-9]/g, '_');
+            try {
+                const cached = localStorage.getItem(cacheKey);
+                if (cached) {
+                    const parsed = JSON.parse(cached);
+                    window.coordenadasMemoriaCache[cleanAddr] = parsed;
+                    return parsed;
+                }
+            } catch (e) {}
+
+            try {
+                // Busca no OpenStreetMap / Nominatim
+                let res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(cleanAddr + ', Belo Horizonte, MG, Brasil')}`);
+                let data = await res.json();
+
+                if (!data || data.length === 0) {
+                    res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(cleanAddr + ', Brasil')}`);
+                    data = await res.json();
+                }
+
+                if (data && data.length > 0) {
+                    const coords = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+                    window.coordenadasMemoriaCache[cleanAddr] = coords;
+                    try {
+                        localStorage.setItem(cacheKey, JSON.stringify(coords));
+                    } catch (e) {}
+                    return coords;
+                }
+            } catch (e) {
+                console.warn("Erro ao geocodificar endereço:", cleanAddr, e);
+            }
+            return null;
+        };
+
+        // Wake Lock
+        let wakeLock = null;
+        window.solicitarWakeLock = async function solicitarWakeLock() {
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    atualizarPainelDiag('Wake', '🟢 ATIVO', '#55efc4');
+                    wakeLock.addEventListener('release', () => {
+                        console.log('Wake Lock liberado. Tentando recuperar...');
+                        if (document.visibilityState === 'visible') solicitarWakeLock();
+                    });
+                }
+            } catch (err) {
+                atualizarPainelDiag('Wake', '❌ ERRO', '#fab1a0');
+            }
+        }
+
+        // Keep Alive Vídeo (Técnica agressiva para evitar suspensão do CPU)
+        function iniciarVideoStayAlive() {
+            let video = document.getElementById('stayAliveVideo');
+            if (!video) {
+                video = document.createElement('video');
+                video.id = 'stayAliveVideo';
+                video.muted = true;
+                video.loop = true;
+                video.playsInline = true;
+                video.style.cssText = "position:fixed; top:0; left:0; width:1px; height:1px; opacity:0.01; pointer-events:none;";
+                // Base64 de um vídeo de 1 segundo em branco/silencioso
+                video.src = "data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pY29uYXZjMQAAAAhfreePAAAAAG1vb3YAAABsbXZoZAAAAADNo+mRzaPpkQAAAbQAAAG0AAEAAAEAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAc dHJhawAAAFx0a2hkAAAAAc2j6ZHNv+mRAAABtAAAAAAAAAABAAAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAQAAAAGlbZHBzAAAACHBhc3AAAAABAAAACHBhc3AAAAABAAAAFmVkdHMAAAAMZWxzdAAAAAABAAABAAAfbWRpYQAAACBtZGhkAAAAAM2j6ZHNv+mRAAAH0AAABy5VSHf/AAAAAhtZGhkAAAAAM2j6ZHNv+mRAAAH0AAABy5VSHf/AAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXI= ";
+                document.body.appendChild(video);
+            }
+            video.play().catch(e => console.warn("Erro ao iniciar vídeo stay-alive:", e));
+        }
+
+        // Heartbeat de Rede (Mantém o WebSocket do Firebase vivo)
+        function iniciarHeartbeat() {
+            setInterval(() => {
+                const nome = localStorage.getItem('userName');
+                if (nome && window.remoteDb) {
+                    const heartbeatRef = window.firebaseRef(window.remoteDb, `status_entregadores/${nome}/heartbeat`);
+                    window.firebaseUpdate(window.firebaseRef(window.remoteDb, `status_entregadores/${nome}`), {
+                        heartbeat: Date.now()
+                    });
+                }
+            }, 30000); // 30 segundos
+        }
+
+        // Keep Alive Audio & Media Session (para evitar suspensão em segundo plano)
+        window.ativarAlertasPrioritarios = async function () {
+            console.log("🚀 Ativando modo de alta prioridade...");
+
+            // 1. Notificações
+            if (window.permitirNotificacoes) await window.permitirNotificacoes();
+
+            // 2. Wake Lock
+            if (window.solicitarWakeLock) await window.solicitarWakeLock();
+
+            // 3. Audio & Video Stay-Alive
+            window.iniciarKeepAlive();
+            iniciarVideoStayAlive();
+
+            // 4. Heartbeat
+            iniciarHeartbeat();
+
+            // 5. Teste Inicial
+            window.mostrarMensagemSucesso("✅ Monitoramento ATIVO!");
+        };
+
+        window.testarAlerta = function () {
+            window.mostrarMensagemSucesso("📢 Testando alerta em 3 segundos...");
+            setTimeout(() => {
+                tocarAlertaSonoro();
+            }, 3000);
+        };
+
+        function configurarMediaSession() {
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: 'Canoas Gás - OPERAÇÃO ATIVA',
+                    artist: 'Entregador em Rota',
+                    album: 'Mantenha em Segundo Plano',
+                    artwork: [
+                        { src: 'logo.png', sizes: '512x512', type: 'image/png' }
+                    ]
+                });
+
+                // Handlers reais para "enganar" o sistema
+                navigator.mediaSession.setActionHandler('play', () => {
+                    console.log("MediaSession: Play");
+                    window.iniciarKeepAlive();
+                });
+                navigator.mediaSession.setActionHandler('pause', () => {
+                    console.log("MediaSession: Pause (bloqueado)");
+                    // Impede o sistema de pausar o keep-alive
+                    setTimeout(() => window.iniciarKeepAlive(), 100);
+                });
+
+                navigator.mediaSession.playbackState = "playing";
+            }
+        }
+
+        let keepAliveRetries = 0;
+        window.iniciarKeepAlive = function iniciarKeepAlive() {
+            if (window.isPlayingAlert) return;
+
+            if (window.silentAudioInstance && !window.silentAudioInstance.paused) {
+                atualizarPainelDiag('Audio', '🟢 ON', '#55efc4');
+                return;
+            }
+
+            console.log("🔊 Iniciando Loop de Keep-Alive...");
+
+            if (!window.silentAudioInstance) {
+                // Áudio quase silencioso (White Noise de 1s)
+                window.silentAudioInstance = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFRm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==");
+                window.silentAudioInstance.loop = true;
+                window.silentAudioInstance.volume = 0.02; // Volume baixíssimo mas não zero
+
+                window.silentAudioInstance.onpause = () => {
+                    if (!window.isPlayingAlert) {
+                        console.warn("⚠️ Keep-alive pausado pelo sistema. Reiniciando...");
+                        setTimeout(() => window.iniciarKeepAlive(), 500);
+                    }
+                };
+            }
+
+            window.silentAudioInstance.play().then(() => {
+                configurarMediaSession();
+                atualizarPainelDiag('Audio', '🟢 ON', '#55efc4');
+                keepAliveRetries = 0;
+            }).catch((err) => {
+                console.error("❌ Erro no Keep-Alive:", err);
+                atualizarPainelDiag('Audio', '🟠 TOCAR', '#e17055');
+                if (keepAliveRetries < 5) {
+                    keepAliveRetries++;
+                    setTimeout(() => window.iniciarKeepAlive(), 2000);
+                }
+            });
+        }
+
+        // Alerta Buzina
+        let buzinaAudioInstance = null;
+        window.tocarAlertaSonoro = async function tocarAlertaSonoro() {
+            if (window.isPlayingAlert) return;
+            window.isPlayingAlert = true;
+
+            console.log("🔔 Alerta Sonoro: Iniciando...");
+
+            // Vibrar imediatamente (ajuda a acordar o dispositivo)
+            if ('vibrate' in navigator) {
+                navigator.vibrate([1000, 500, 1000, 500, 2000]);
+            }
+
+            if (window.silentAudioInstance) {
+                window.silentAudioInstance.pause();
+            }
+
+            if (!buzinaAudioInstance) {
+                buzinaAudioInstance = new Audio("./buzina.mp3");
+                buzinaAudioInstance.onended = () => {
+                    window.isPlayingAlert = false;
+                    window.iniciarKeepAlive();
+                };
+            }
+
+            // Forçar tempo atual para o início
+            buzinaAudioInstance.currentTime = 0;
+
+            buzinaAudioInstance.play().then(() => {
+                if ('mediaSession' in navigator) {
+                    navigator.mediaSession.playbackState = "playing";
+                }
+                if (window.mostrarMensagemSucesso) window.mostrarMensagemSucesso("🔊 NOVO PEDIDO!");
+
+                // Enviar notificação de sistema via Service Worker (acorda a tela no Xiaomi)
+                if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+                    navigator.serviceWorker.controller.postMessage({
+                        type: 'NOTIFICAR_PEDIDO',
+                        body: '💰 Novo pedido disponível! Toque para ver.',
+                        url: './entregador.html'
+                    });
+                }
+            }).catch((err) => {
+                console.error("Erro ao tocar alarme:", err);
+                window.isPlayingAlert = false;
+                window.iniciarKeepAlive();
+            });
+        }
+
+        window.mostrarMensagemSucesso = function (txt) {
+            const msg = document.getElementById('msgCopiado');
+            msg.innerText = txt || "Sucesso! ✅";
+            msg.style.display = 'block';
+            setTimeout(() => { msg.style.display = 'none'; }, 3000);
+        }
+
+        window.permitirNotificacoes = async function permitirNotificacoes() {
+            if (!('Notification' in window)) return;
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') window.mostrarMensagemSucesso("Notificações ativadas! 🔔");
+        }
+
+        window.addEventListener('load', () => {
+            window.verificarSessao();
+            // Registrar SW para notificações em segundo plano
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('👷 SW: Registrado para entregador', reg.scope))
+                    .catch(err => console.error('❌ SW: Falha', err));
+            }
+        });
+
+        // Reforço completo de ciclo de vida (tela liga/desliga, volta do Waze/WhatsApp)
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                console.log("👁️ App Visível: Reforçando conexões, WakeLock e GPS...");
+                if (window.iniciarEscutaTempoReal) window.iniciarEscutaTempoReal();
+                if (window.solicitarWakeLock) window.solicitarWakeLock();
+                if (window.forcarCapturaGPSImediata) window.forcarCapturaGPSImediata('app_visivel');
+            }
+            if (window.iniciarKeepAlive) window.iniciarKeepAlive();
+        });
+
+        window.addEventListener('focus', () => {
+            if (window.solicitarWakeLock) window.solicitarWakeLock();
+            if (window.forcarCapturaGPSImediata) window.forcarCapturaGPSImediata('app_focus');
+        });
+
+        window.addEventListener('pageshow', () => {
+            if (window.solicitarWakeLock) window.solicitarWakeLock();
+            if (window.forcarCapturaGPSImediata) window.forcarCapturaGPSImediata('app_pageshow');
+        });
+
+        // Qualquer toque ou clique na tela garante WakeLock e áudio keep-alive contínuo
+        ['click', 'touchstart'].forEach(evtName => {
+            document.addEventListener(evtName, () => {
+                if (window.iniciarKeepAlive) window.iniciarKeepAlive();
+                if (window.solicitarWakeLock && (!window.wakeLock || window.wakeLock.released)) {
+                    window.solicitarWakeLock();
+                }
+            }, { passive: true });
+        });
+    </script>
+
+    
+</body>
+
+</html>

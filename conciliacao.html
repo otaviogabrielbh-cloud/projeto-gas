@@ -1,0 +1,1539 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auditoria e Conciliação - Canoas Gás</title>
+    
+    <!-- Fonte Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Ícones Phosphor -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --surface-color: #1e293b;
+            --surface-hover: #334155;
+            --primary-color: #3b82f6;
+            --primary-hover: #2563eb;
+            --success-color: #10b981;
+            --danger-color: #ef4444;
+            --warning-color: #f59e0b;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --border-color: rgba(255,255,255,0.08);
+            --border-highlight: rgba(255,255,255,0.15);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* HEADER E NAVEGAÇÃO */
+        header {
+            background-color: var(--surface-color);
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-title h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header-title h1 i {
+            color: var(--primary-color);
+        }
+
+        .header-subtitle {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-top: 4px;
+        }
+
+        .nav-actions {
+            display: flex;
+            gap: 0.6rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: none;
+            text-decoration: none;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+
+        .btn-outline:hover {
+            background: rgba(255,255,255,0.05);
+            border-color: var(--border-highlight);
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+        /* PAINEL PRINCIPAL (SPLIT SCREEN) */
+        .main-container {
+            flex: 1;
+            padding: 2rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            max-width: 1600px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* CAIXAS DE LISTAGEM */
+        .list-panel {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .panel-header {
+            padding: 1.2rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0,0,0,0.1);
+        }
+
+        .panel-header h2 {
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .panel-header .mp-icon { color: #00b1ea; } /* Cor do Mercado Pago */
+        .panel-header .app-icon { color: var(--warning-color); }
+
+        .panel-stats {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            background: rgba(255,255,255,0.05);
+            padding: 4px 10px;
+            border-radius: 20px;
+        }
+
+        .list-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+            max-height: calc(100vh - 220px);
+        }
+
+        /* ITENS DA LISTA */
+        .transaction-item {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--danger-color); /* vermelho para falta */
+            border-radius: 12px;
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .transaction-item:hover {
+            background: rgba(255,255,255,0.05);
+            border-color: var(--border-highlight);
+        }
+
+        .transaction-item.selected {
+            background: rgba(59, 130, 246, 0.1);
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 1px var(--primary-color);
+        }
+
+        .transaction-item.conciliated {
+            opacity: 0.85;
+            border-left: 4px solid var(--success-color);
+            background: rgba(16, 185, 129, 0.06);
+        }
+
+        .btn-undo-xs {
+            background: rgba(239, 68, 68, 0.15);
+            border: none;
+            color: var(--danger-color);
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            font-size: 0.7rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-left: 4px;
+            opacity: 0;
+            transition: opacity 0.2s, background 0.2s;
+            flex-shrink: 0;
+            line-height: 1;
+        }
+
+        .transaction-item.conciliated:hover .btn-undo-xs {
+            opacity: 1;
+        }
+
+        .btn-undo-xs:hover {
+            background: rgba(239, 68, 68, 0.35);
+        }
+
+        .btn-remover-item {
+            background: rgba(239, 68, 68, 0.12);
+            border: none;
+            color: var(--danger-color);
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            font-size: 0.65rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+            flex-shrink: 0;
+            line-height: 1;
+            opacity: 0.5;
+        }
+        .btn-remover-item:hover {
+            background: rgba(239, 68, 68, 0.3);
+            opacity: 1;
+        }
+        @media (hover: none) {
+            .btn-remover-item {
+                opacity: 0.6;
+            }
+        }
+
+        .transaction-item.dinheiro {
+            opacity: 0.55;
+            pointer-events: none;
+            border-left: 4px solid var(--text-secondary);
+        }
+
+        /* BADGE DE PAR DE CONCILIAÇÃO */
+        .badge-par {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--success-color);
+            color: #fff;
+            font-size: 0.7rem;
+            font-weight: 800;
+            min-width: 20px;
+            height: 20px;
+            border-radius: 20px;
+            padding: 0 5px;
+            letter-spacing: 0;
+            flex-shrink: 0;
+            box-shadow: 0 1px 4px rgba(16,185,129,0.4);
+        }
+
+        .item-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .item-title {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .item-meta {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .item-meta span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .item-value {
+            font-weight: 700;
+            font-size: 1.1rem;
+            text-align: right;
+        }
+
+        .item-value.positive { color: var(--success-color); }
+        .item-value.negative { color: var(--danger-color); }
+
+        /* AÇÃO CENTRAL (VINCULAR) */
+        .action-bar {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--surface-color);
+            padding: 1rem 2rem;
+            border-radius: 100px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5), 0 0 0 1px var(--border-highlight);
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: translateX(-50%) translateY(20px);
+        }
+
+        .action-bar.visible {
+            opacity: 1;
+            pointer-events: all;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .action-summary {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .action-summary b {
+            color: var(--text-primary);
+        }
+
+        /* LOADING */
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            background: var(--bg-color);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            transition: opacity 0.3s;
+        }
+        .spinner {
+            width: 40px; height: 40px;
+            border: 4px solid rgba(255,255,255,0.1);
+            border-top-color: var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* SCROLLBAR CUSTOM */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+        /* MODAL OVERLAY */
+        .modal { display: none; }
+        .modal.show { display: flex; }
+
+        /* OAUTH BANNER */
+        #oauthBanner {
+            transition: all 0.3s ease;
+        }
+        #oauthBanner.success {
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid var(--success-color);
+            color: var(--success-color);
+        }
+        #oauthBanner.error {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid var(--danger-color);
+            color: var(--danger-color);
+        }
+
+        /* FILTRO DE DATA */
+        .filter-bar {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem 2rem;
+            background: var(--surface-color);
+            border-bottom: 1px solid var(--border-color);
+            flex-wrap: wrap;
+        }
+        .filter-bar label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .filter-bar input[type="date"] {
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0.5rem 0.8rem;
+            color: var(--text-primary);
+            font-size: 0.85rem;
+            font-family: 'Outfit', sans-serif;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .filter-bar input[type="date"]:focus {
+            border-color: var(--primary-color);
+        }
+        .filter-bar input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(0.7);
+            cursor: pointer;
+        }
+        .filter-bar .filter-clear {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-family: 'Outfit', sans-serif;
+            transition: all 0.2s;
+        }
+        .filter-bar .filter-clear:hover {
+            border-color: var(--danger-color);
+            color: var(--danger-color);
+        }
+        .filter-bar .filter-active {
+            font-size: 0.8rem;
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+
+        /* RODAPÉ TOTALIZADOR DOS PAINÉIS */
+        .panel-footer {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--border-color);
+            background: rgba(0,0,0,0.15);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .panel-footer .footer-label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+        .panel-footer .footer-value {
+            font-size: 1.2rem;
+            font-weight: 800;
+            color: var(--text-primary);
+        }
+
+        /* BARRA RESUMO GERAL */
+        .summary-bar {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 2.5rem;
+            padding: 1rem 2rem;
+            background: var(--surface-color);
+            border-top: 1px solid var(--border-color);
+            flex-wrap: wrap;
+        }
+        .summary-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+        }
+        .summary-item .summary-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+        .summary-item .summary-value {
+            font-size: 1.15rem;
+            font-weight: 700;
+        }
+        .summary-item .summary-value.positive { color: var(--success-color); }
+        .summary-item .summary-value.negative { color: var(--danger-color); }
+        .summary-item .summary-value.warning { color: var(--warning-color); }
+        .summary-item .summary-value.neutral { color: var(--text-primary); }
+
+        /* CONTROLES DOS PAINÉIS (BUSCA + FILTROS) */
+        .panel-controls {
+            padding: 0.7rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            flex-wrap: wrap;
+            background: rgba(0,0,0,0.05);
+        }
+
+        .search-input {
+            background: rgba(0,0,0,0.25);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0.45rem 0.8rem;
+            color: var(--text-primary);
+            font-size: 0.82rem;
+            font-family: 'Outfit', sans-serif;
+            outline: none;
+            flex: 1;
+            min-width: 120px;
+            transition: border-color 0.2s;
+        }
+
+        .search-input:focus {
+            border-color: var(--primary-color);
+        }
+
+        .search-input::placeholder {
+            color: var(--text-secondary);
+            opacity: 0.5;
+        }
+
+        .pag-filter-group {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+
+        .pag-filter-btn {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 0.3rem 0.65rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.72rem;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+            transition: all 0.2s;
+            line-height: 1.4;
+        }
+
+        .pag-filter-btn:hover {
+            border-color: var(--border-highlight);
+            color: var(--text-primary);
+        }
+
+        .pag-filter-btn.active {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            color: white;
+        }
+
+        .badge-fee {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--warning-color);
+            font-size: 0.6rem;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 4px;
+            white-space: nowrap;
+            letter-spacing: 0.3px;
+        }
+
+        /* VAZIO */
+        .empty-message {
+            text-align: center;
+            padding: 2rem 1rem;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        /* MODAL GENÉRICO */
+        .modal-content {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 2rem;
+            max-width: 800px;
+            width: 95%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            position: relative;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-header h2 {
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1.5rem;
+            cursor: pointer;
+            line-height: 1;
+            padding: 4px;
+        }
+
+        .modal-close:hover { color: var(--text-primary); }
+
+        /* DROP ZONE */
+        .drop-zone {
+            border: 2px dashed var(--border-color);
+            border-radius: 16px;
+            padding: 3rem 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 1.5rem;
+        }
+
+        .drop-zone:hover, .drop-zone.drag-over {
+            border-color: var(--primary-color);
+            background: rgba(59, 130, 246, 0.03);
+        }
+
+        .drop-zone p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        .drop-zone span { color: var(--text-primary); font-weight: 600; }
+
+        .drop-zone .drop-icon {
+            font-size: 3rem;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        /* PREVIEW TABLE */
+        .preview-table-wrap {
+            overflow-x: auto;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            margin: 1rem 0;
+        }
+
+        .preview-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+        }
+
+        .preview-table th {
+            background: rgba(0,0,0,0.2);
+            padding: 0.6rem 0.8rem;
+            text-align: left;
+            color: var(--text-secondary);
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+
+        .preview-table td {
+            padding: 0.5rem 0.8rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .preview-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+        .amount-pos { color: var(--success-color); font-weight: 600; }
+        .amount-neg { color: var(--danger-color); font-weight: 600; }
+
+        .import-stats {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+
+        .import-stat {
+            background: rgba(0,0,0,0.15);
+            border-radius: 10px;
+            padding: 0.8rem 1.2rem;
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .import-stat .label {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .import-stat .value {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-top: 4px;
+        }
+
+        /* RELATÓRIO DE DIVERGÊNCIAS */
+        .report-filters {
+            display: flex;
+            gap: 0.8rem;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
+        }
+
+        .report-filters label {
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        .report-filters input[type="date"] {
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0.4rem 0.7rem;
+            color: var(--text-primary);
+            font-size: 0.82rem;
+            font-family: 'Outfit', sans-serif;
+            outline: none;
+        }
+
+        .report-filters input[type="date"]:focus { border-color: var(--primary-color); }
+
+        .report-table-wrap {
+            overflow-x: auto;
+            max-height: 50vh;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+        }
+
+        .report-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+            min-width: 700px;
+        }
+
+        .report-table th {
+            background: rgba(0,0,0,0.25);
+            padding: 0.7rem 0.8rem;
+            text-align: center;
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            position: sticky;
+            top: 0;
+        }
+
+        .report-table td {
+            padding: 0.5rem 0.8rem;
+            border-bottom: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        .report-table tr.row-destaque td {
+            background: rgba(59, 130, 246, 0.06);
+            font-weight: 700;
+            border-top: 2px solid var(--primary-color);
+        }
+
+        .report-table tr:hover td { background: rgba(255,255,255,0.03); }
+        .cell-ok { color: var(--success-color); }
+        .cell-warn { color: var(--warning-color); }
+        .cell-danger { color: var(--danger-color); }
+
+        /* TOAST */
+        .toast-container {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 99999;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            pointer-events: none;
+        }
+
+        .toast {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 0.8rem 1.2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.88rem;
+            font-weight: 500;
+            min-width: 280px;
+            max-width: 450px;
+            pointer-events: auto;
+            animation: toastIn 0.3s ease-out forwards;
+        }
+
+        .toast.removing { animation: toastOut 0.3s ease-in forwards; }
+
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateX(100px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes toastOut {
+            from { opacity: 1; transform: translateX(0); }
+            to { opacity: 0; transform: translateX(100px); }
+        }
+
+        .toast.success { border-left: 4px solid var(--success-color); }
+        .toast.success i { color: var(--success-color); }
+        .toast.error { border-left: 4px solid var(--danger-color); }
+        .toast.error i { color: var(--danger-color); }
+        .toast.warning { border-left: 4px solid var(--warning-color); }
+        .toast.warning i { color: var(--warning-color); }
+        .toast.info { border-left: 4px solid var(--primary-color); }
+        .toast.info i { color: var(--primary-color); }
+
+        /* BARRA DE PROGRESSO */
+        .progress-bar-wrap {
+            display: none;
+            align-items: center;
+            gap: 10px;
+            padding: 0.5rem 1rem;
+            background: var(--surface-color);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .progress-bar-wrap.visible { display: flex; }
+
+        .progress-track {
+            flex: 1;
+            height: 6px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 10px;
+            overflow: hidden;
+            min-width: 100px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--primary-color);
+            border-radius: 10px;
+            transition: width 0.2s ease;
+            width: 0%;
+        }
+
+        .progress-label {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        /* BADGE ORIGEM */
+        .badge-origem {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            font-size: 0.6rem;
+            font-weight: 700;
+            padding: 2px 5px;
+            border-radius: 4px;
+            margin-left: 4px;
+            white-space: nowrap;
+        }
+        .badge-origem.importado {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--success-color);
+        }
+        .badge-origem.mp {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--primary-color);
+        }
+
+        /* RESPONSIVO */
+        /* QUADROS DE CONCILIAÇÃO (PENDÊNCIA + CONCILIADO) */
+        .quadros-conciliacao {
+            padding: 0 2rem 2rem;
+            max-width: 1600px;
+            margin: 0 auto;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .quadro {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .quadro-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0,0,0,0.1);
+        }
+
+        .quadro-header h2 {
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .quadro-stats {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            background: rgba(255,255,255,0.05);
+            padding: 4px 10px;
+            border-radius: 20px;
+        }
+
+        .quadro-table-wrap {
+            overflow-x: auto;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .quadro-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+            min-width: 700px;
+        }
+
+        .quadro-table th {
+            background: rgba(0,0,0,0.25);
+            padding: 0.7rem 0.8rem;
+            text-align: left;
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            position: sticky;
+            top: 0;
+            white-space: nowrap;
+        }
+
+        .quadro-table td {
+            padding: 0.5rem 0.8rem;
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: middle;
+        }
+
+        .quadro-table tbody tr:hover td {
+            background: rgba(255,255,255,0.03);
+        }
+
+        .quadro-table .par-num {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--success-color);
+            color: #fff;
+            font-size: 0.7rem;
+            font-weight: 800;
+            min-width: 22px;
+            height: 22px;
+            border-radius: 20px;
+            padding: 0 5px;
+        }
+
+        .quadro-table .tag-conciliado {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--success-color);
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        .quadro-table .tag-pendente {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--danger-color);
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        .quadro-table .tag-taxa {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--warning-color);
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 4px;
+        }
+
+        .quadro-table .badge-origem-table {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            font-size: 0.6rem;
+            font-weight: 700;
+            padding: 2px 5px;
+            border-radius: 4px;
+            white-space: nowrap;
+        }
+        .quadro-table .badge-origem-table.importado {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--success-color);
+        }
+        .quadro-table .badge-origem-table.mp {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--primary-color);
+        }
+
+        .quadro-table .cell-valor {
+            text-align: right;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+        .quadro-table .cell-valor.positive { color: var(--success-color); }
+        .quadro-table .cell-valor.negative { color: var(--danger-color); }
+        .quadro-table .cell-data {
+            white-space: nowrap;
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+        }
+        .quadro-table .cell-desc {
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .quadro-empty {
+            text-align: center;
+            padding: 2rem 1rem;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        .quadro-separator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            padding: 0.3rem 0;
+        }
+
+        .quadro-separator .sep-line {
+            flex: 1;
+            height: 1px;
+            background: var(--border-color);
+        }
+
+        .quadro-separator .sep-icon {
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+        }
+
+            @media (max-width: 768px) {
+            .main-container {
+                grid-template-columns: 1fr;
+                padding: 1rem;
+            }
+            .quadros-conciliacao {
+                padding: 0 1rem 1rem;
+            }
+            .quadro-table {
+                font-size: 0.75rem;
+                min-width: 600px;
+            }
+            .quadro-table .cell-desc {
+                max-width: 120px;
+            }
+            header {
+                flex-direction: column;
+                gap: 1rem;
+                padding: 1rem;
+            }
+            .nav-actions {
+                width: 100%;
+                flex-wrap: wrap;
+                justify-content: flex-start;
+            }
+            .action-bar {
+                flex-direction: column;
+                border-radius: 16px;
+                padding: 1rem;
+                width: 90%;
+                gap: 0.8rem;
+                bottom: 1rem;
+            }
+            .action-summary {
+                flex-wrap: wrap;
+            }
+            .filter-bar {
+                padding: 0.8rem 1rem;
+                gap: 0.6rem;
+            }
+            .filter-bar label {
+                font-size: 0.8rem;
+            }
+            .filter-bar input[type="date"] {
+                font-size: 0.8rem;
+                padding: 0.4rem 0.6rem;
+            }
+            .summary-bar {
+                gap: 1.5rem;
+                padding: 0.8rem 1rem;
+            }
+            .panel-controls {
+                padding: 0.6rem 1rem;
+                gap: 0.5rem;
+            }
+            .search-input {
+                font-size: 0.8rem;
+                padding: 0.4rem 0.6rem;
+                min-width: 100px;
+            }
+            .pag-filter-btn {
+                font-size: 0.68rem;
+                padding: 0.25rem 0.5rem;
+            }
+            .modal-content {
+                padding: 1.2rem;
+                width: 98%;
+                max-height: 85vh;
+            }
+            .drop-zone {
+                padding: 2rem 1rem;
+            }
+            .import-stats {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            .report-filters {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .report-filters input[type="date"] {
+                width: 100%;
+            }
+        }
+    </style>
+    <!-- VPS Socket.IO & Adapter (Primeiros Scripts) -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="js/vps-adapter.js"></script>
+</head>
+
+<body>
+    <!-- LOADING INITIAL -->
+    <div id="loadingScreen" class="loading-overlay">
+        <div class="spinner"></div>
+        <p style="color: var(--text-secondary); font-size: 0.9rem; letter-spacing: 2px;">CARREGANDO DADOS...</p>
+    </div>
+
+    <header>
+        <div class="header-title">
+            <h1><i class="ph ph-scales"></i> Conciliação Bancária</h1>
+            <div class="header-subtitle">Auditoria Inteligente: Banco vs Aplicativo</div>
+        </div>
+        <div class="nav-actions">
+            <a href="dashboard-financeiro.html" class="btn btn-outline"><i class="ph ph-arrow-left"></i> Voltar</a>
+            <button class="btn btn-outline" id="btnAtualizar" onclick="atualizarDados()">
+                <i class="ph ph-arrows-clockwise"></i> Atualizar
+            </button>
+            <button class="btn btn-outline" onclick="recarregarDadosApp()" style="font-size:0.75rem;">
+                <i class="ph ph-database"></i> Atualizar App
+            </button>
+            <button class="btn btn-outline" id="btnConectarMP" onclick="conectarMercadoPago()" style="display:none;">
+                <i class="ph ph-plug"></i> Conectar MP
+            </button>
+            <span id="mpStatusBadge" style="display:none; padding:6px 12px; border-radius:8px; font-size:0.8rem; font-weight:600; align-items:center; gap:6px;"></span>
+            <button class="btn btn-primary" onclick="iniciarConciliacaoAutomatica()">
+                <i class="ph ph-magic-wand"></i> Auto-Conciliar
+            </button>
+            <button class="btn btn-primary" id="btnSalvar" onclick="salvarConciliacoes()" style="display:none; background: var(--success-color); border: none;">
+                <i class="ph ph-floppy-disk"></i> Salvar (0)
+            </button>
+            <button class="btn btn-outline" onclick="exportarConciliacaoCSV()">
+                <i class="ph ph-download-simple"></i> Exportar CSV
+            </button>
+            <button class="btn btn-outline" onclick="abrirModalImportar()">
+                <i class="ph ph-upload-simple"></i> Importar Extrato
+            </button>
+            <button class="btn btn-outline" onclick="abrirModalRelatorio()">
+                <i class="ph ph-chart-bar"></i> Relatório
+            </button>
+            <button class="btn btn-outline" id="btnResetar" onclick="abrirModalReset()" style="color:var(--danger-color);border-color:var(--danger-color);">
+                <i class="ph ph-arrow-counter-clockwise"></i> Resetar
+            </button>
+        </div>
+    </header>
+
+    <!-- MODAL CONFIG MP -->
+    <div id="modalConfigMP" class="modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:200; align-items:center; justify-content:center;">
+        <div style="background:var(--surface-color); border:1px solid var(--border-color); border-radius:16px; padding:2rem; max-width:480px; width:90%; box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+                <h2 style="font-size:1.2rem; display:flex; align-items:center; gap:8px;"><i class="ph ph-plug" style="color:var(--primary-color);"></i> Conectar Mercado Pago</h2>
+                <button onclick="document.getElementById('modalConfigMP').style.display='none'" style="background:none; border:none; color:var(--text-secondary); font-size:1.5rem; cursor:pointer;">&times;</button>
+            </div>
+            <p style="color:var(--text-secondary); font-size:0.9rem; margin-bottom:1.5rem;">
+                Cole os dados do seu App Mercado Pago (disponível em 
+                <a href="https://www.mercadopago.com.br/developers/panel" target="_blank" style="color:var(--primary-color);">developers.mercadopago.com</a>).
+            </p>
+            <label style="display:block; margin-bottom:0.3rem; font-weight:600; font-size:0.85rem;">APP_ID (Client ID)</label>
+            <input type="text" id="inputAppId" placeholder="Cole o APP_ID aqui" 
+                style="width:100%; padding:12px; border-radius:8px; border:1px solid var(--border-color); background:rgba(0,0,0,0.2); color:var(--text-primary); margin-bottom:1rem; font-size:0.95rem;">
+            <label style="display:block; margin-bottom:0.3rem; font-weight:600; font-size:0.85rem;">Client Secret</label>
+            <input type="password" id="inputClientSecret" placeholder="Cole o Client Secret aqui" 
+                style="width:100%; padding:12px; border-radius:8px; border:1px solid var(--border-color); background:rgba(0,0,0,0.2); color:var(--text-primary); margin-bottom:1.5rem; font-size:0.95rem;">
+            <div style="display:flex; gap:10px; justify-content:flex-end;">
+                <button onclick="document.getElementById('modalConfigMP').style.display='none'" class="btn btn-outline">Cancelar</button>
+                <button onclick="salvarConfigMP()" class="btn btn-primary">Salvar e Conectar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Banner sucesso/erro OAuth -->
+    <div id="oauthBanner" style="display:none; padding:12px 20px; margin:0 2rem; border-radius:12px; font-weight:600; text-align:center;"></div>
+
+    <!-- MODAL IMPORTAR EXTRATO -->
+    <div id="modalImportar" class="modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:200; align-items:center; justify-content:center;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="ph ph-upload-simple" style="color:var(--primary-color);"></i> Importar Extrato Bancário</h2>
+                <button class="modal-close" onclick="fecharModal('modalImportar')">&times;</button>
+            </div>
+            <p style="color:var(--text-secondary); font-size:0.9rem; margin-bottom:1rem;">
+                Importe extratos bancários no formato <strong>.OFX</strong> (Itaú, Bradesco, etc.)
+                ou <strong>.CSV</strong> (semicolon; use "Data;Descricao;ID;Valor;Tipo").
+            </p>
+            <div class="drop-zone" id="dropZoneImportar">
+                <i class="ph ph-file-arrow-up drop-icon"></i>
+                <p>Arraste seu arquivo <span>.ofx</span> ou <span>.csv</span> aqui</p>
+                <p style="font-size:0.85rem; margin-top:6px;">ou clique para selecionar</p>
+                <input type="file" id="fileImport" accept=".ofx,.csv" style="display:none;">
+            </div>
+            <div id="importPreview" style="display:none;">
+                <div class="import-stats" id="importStats"></div>
+                <div class="preview-table-wrap">
+                    <table class="preview-table">
+                        <thead><tr><th>Data</th><th>Descrição</th><th>ID</th><th style="text-align:right;">Valor</th></tr></thead>
+                        <tbody id="importPreviewBody"></tbody>
+                    </table>
+                </div>
+                <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:1rem;">
+                    <button class="btn btn-outline" onclick="fecharModal('modalImportar')">Cancelar</button>
+                    <button class="btn btn-primary" id="btnConfirmarImport" onclick="confirmarImportacao()" disabled>
+                        <i class="ph ph-check"></i> Importar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL RELATÓRIO DE DIVERGÊNCIAS -->
+    <div id="modalRelatorio" class="modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:200; align-items:center; justify-content:center;">
+        <div class="modal-content" style="max-width:900px;">
+            <div class="modal-header">
+                <h2><i class="ph ph-chart-bar" style="color:var(--primary-color);"></i> Relatório de Divergências</h2>
+                <button class="modal-close" onclick="fecharModal('modalRelatorio')">&times;</button>
+            </div>
+            <div class="report-filters">
+                <label><i class="ph ph-calendar"></i> De</label>
+                <input type="date" id="relDataInicio">
+                <label>até</label>
+                <input type="date" id="relDataFim">
+                <button class="btn btn-outline" onclick="gerarRelatorioDivergencias()" style="padding:0.4rem 1rem; font-size:0.82rem;">
+                    <i class="ph ph-magnifying-glass"></i> Gerar
+                </button>
+                <button class="btn btn-primary" onclick="exportarRelatorioCSV()" style="padding:0.4rem 1rem; font-size:0.82rem; background:var(--success-color);">
+                    <i class="ph ph-download-simple"></i> Exportar CSV
+                </button>
+            </div>
+            <div class="report-table-wrap">
+                <table class="report-table">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Total MP</th>
+                            <th>Total App</th>
+                            <th>Diferença</th>
+                            <th>Pendentes MP</th>
+                            <th>Pendentes App</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="relatorioBody"></tbody>
+                </table>
+            </div>
+            <div id="relatorioEmpty" style="display:none; text-align:center; padding:2rem; color:var(--text-secondary);">
+                Selecione um período e clique em "Gerar".
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL RESET -->
+    <div id="modalReset" class="modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:200; align-items:center; justify-content:center;">
+        <div class="modal-content" style="max-width:480px;">
+            <div class="modal-header">
+                <h2><i class="ph ph-warning" style="color:var(--danger-color);"></i> Resetar Conciliação</h2>
+                <button class="modal-close" onclick="fecharModal('modalReset')">&times;</button>
+            </div>
+            <div style="padding:1.5rem;">
+                <p style="margin-bottom:1rem; line-height:1.6;" id="resetDesc">
+                    Isso irá <strong>apagar os vínculos salvos</strong> no período filtrado e
+                    deixar os lançamentos pendentes para essa data.
+                </p>
+                <ul style="margin-bottom:1.5rem; padding-left:1.2rem; line-height:1.8; color:var(--text-secondary);">
+                    <li>Vínculos fora do filtro <strong>não</strong> serão afetados</li>
+                    <li>O campo <code>conciliado</code> das transações MP no período será limpo</li>
+                    <li>Os rascunhos locais serão descartados</li>
+                    <li>Os lançamentos voltarão a ficar pendentes para conciliação</li>
+                </ul>
+                <p style="color:var(--danger-color); font-weight:600;">Esta ação não pode ser desfeita.</p>
+            </div>
+            <div class="modal-footer" style="display:flex; gap:0.5rem; justify-content:flex-end; padding:1rem 1.5rem; border-top:1px solid var(--border-color);">
+                <button class="btn btn-outline" onclick="fecharModal('modalReset')">Cancelar</button>
+                <button class="btn btn-primary" onclick="confirmarReset()" style="background:var(--danger-color);border-color:var(--danger-color);">
+                    <i class="ph ph-arrow-counter-clockwise"></i> Sim, resetar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- BARRA DE PROGRESSO -->
+    <div class="progress-bar-wrap" id="progressBar">
+        <span class="progress-label" id="progressLabel">Processando...</span>
+        <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    </div>
+
+    <!-- FILTRO DE DATA -->
+    <div class="filter-bar">
+        <label><i class="ph ph-calendar"></i> De</label>
+        <input type="date" id="filterDataInicio">
+        <label>até</label>
+        <input type="date" id="filterDataFim">
+        <button class="filter-clear" onclick="limparFiltroData()"><i class="ph ph-x"></i> Limpar</button>
+        <span class="filter-active" id="filterStatus"></span>
+    </div>
+
+    <main class="main-container">
+        <!-- PAINEL MERCADO PAGO -->
+        <div class="list-panel">
+            <div class="panel-header">
+                <h2><i class="ph-fill ph-bank mp-icon"></i> Extrato Banco (Mercado Pago)</h2>
+                <span class="panel-stats" id="countMP">0 pendentes</span>
+            </div>
+            <div class="panel-controls">
+                <input type="text" class="search-input" id="buscaMP" placeholder="Buscar por descrição, ID, cliente..." oninput="buscarMP(this.value)">
+                <div class="pag-filter-group" style="flex-shrink:0;">
+                    <button class="pag-filter-btn active" data-origem="todos" onclick="setFiltroOrigemMP('todos')">Todos</button>
+                    <button class="pag-filter-btn" data-origem="mp" onclick="setFiltroOrigemMP('mp')">MP</button>
+                    <button class="pag-filter-btn" data-origem="importado" onclick="setFiltroOrigemMP('importado')">📄 Extrato</button>
+                </div>
+            </div>
+            <div class="list-content" id="listaMercadoPago">
+                <!-- Itens injetados via JS -->
+            </div>
+            <div class="panel-footer">
+                <span class="footer-label">Total Pendentes</span>
+                <span class="footer-value" id="totalMP">R$ 0,00</span>
+            </div>
+        </div>
+
+        <!-- PAINEL APLICATIVO (FIREBASE) -->
+        <div class="list-panel">
+            <div class="panel-header">
+                <h2><i class="ph-fill ph-device-mobile app-icon"></i> Registros App (Firebase)</h2>
+                <span class="panel-stats" id="countApp">0 pendentes</span>
+            </div>
+            <div class="panel-controls" style="flex-wrap: wrap; gap: 0.5rem;">
+                <input type="text" class="search-input" id="buscaApp" placeholder="Buscar por descrição, ID, pagamento..." oninput="buscarApp(this.value)" style="min-width:140px; flex:0 0 auto; width:auto;">
+                <div class="pag-filter-group">
+                    <button class="pag-filter-btn active" data-filtro="todos" onclick="setFiltroPagamento('todos')">Todos</button>
+                    <button class="pag-filter-btn" data-filtro="pix" onclick="setFiltroPagamento('pix')">PIX</button>
+                    <button class="pag-filter-btn" data-filtro="cartao" onclick="setFiltroPagamento('cartao')">Cartão</button>
+                    <button class="pag-filter-btn" data-filtro="dinheiro" onclick="setFiltroPagamento('dinheiro')">Dinheiro</button>
+                    <button class="pag-filter-btn" data-filtro="online" onclick="setFiltroPagamento('online')">Online</button>
+                </div>
+            </div>
+            <div class="list-content" id="listaApp">
+                <!-- Itens injetados via JS -->
+            </div>
+            <div class="panel-footer">
+                <span class="footer-label">Total Pendentes</span>
+                <span class="footer-value" id="totalApp">R$ 0,00</span>
+            </div>
+        </div>
+    </main>
+
+    <!-- BARRA RESUMO GERAL -->
+    <div class="summary-bar" id="summaryBar">
+        <div class="summary-item">
+            <span class="summary-label">Banco (MP)</span>
+            <span class="summary-value neutral" id="sumMP">R$ 0,00</span>
+        </div>
+        <div class="summary-item">
+            <span class="summary-label">App (Firebase)</span>
+            <span class="summary-value neutral" id="sumApp">R$ 0,00</span>
+        </div>
+        <div class="summary-item">
+            <span class="summary-label">Diferença</span>
+            <span class="summary-value" id="sumDif">R$ 0,00</span>
+        </div>
+        <div class="summary-item">
+            <span class="summary-label">Conciliados</span>
+            <span class="summary-value positive" id="sumConciliados">0</span>
+        </div>
+    </div>
+
+    <!-- QUADROS DE CONCILIAÇÃO (PENDÊNCIA + CONCILIADO) -->
+    <div class="quadros-conciliacao">
+        <!-- QUADRO DE PENDÊNCIA DE CONCILIAÇÃO -->
+        <div class="quadro" id="quadroPendencia">
+            <div class="quadro-header">
+                <h2><i class="ph ph-warning-circle" style="color:var(--danger-color);"></i> Pendência de Conciliação</h2>
+                <span class="quadro-stats" id="quadroPendenciaStats">0 pendentes</span>
+            </div>
+            <div class="quadro-table-wrap">
+                <table class="quadro-table">
+                    <thead>
+                        <tr>
+                            <th style="width:40px;">#</th>
+                            <th>Data MP</th>
+                            <th>Descrição MP</th>
+                            <th style="text-align:right;">Valor MP</th>
+                            <th style="text-align:right;">Valor App</th>
+                            <th>Descrição App</th>
+                            <th>Data App</th>
+                            <th>Pagamento</th>
+                            <th>Origem MP</th>
+                        </tr>
+                    </thead>
+                    <tbody id="quadroPendenciaBody"></tbody>
+                </table>
+            </div>
+            <div class="quadro-empty" id="quadroPendenciaEmpty">Nenhum item pendente no período filtrado.</div>
+        </div>
+
+        <!-- QUADRO DE CONCILIADOS -->
+        <div class="quadro" id="quadroConciliado">
+            <div class="quadro-header">
+                <h2><i class="ph ph-check-circle" style="color:var(--success-color);"></i> Conciliados</h2>
+                <span class="quadro-stats" id="quadroConciliadoStats">0 conciliados</span>
+            </div>
+            <div class="quadro-table-wrap">
+                <table class="quadro-table">
+                    <thead>
+                        <tr>
+                            <th style="width:40px;">Par</th>
+                            <th>Data MP</th>
+                            <th>Descrição MP</th>
+                            <th style="text-align:right;">Valor MP</th>
+                            <th style="text-align:right;">Valor App</th>
+                            <th>Descrição App</th>
+                            <th>Data App</th>
+                            <th>Pagamento</th>
+                            <th>Status</th>
+                            <th style="width:50px;">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="quadroConciliadoBody"></tbody>
+                </table>
+            </div>
+            <div class="quadro-empty" id="quadroConciliadoEmpty">Nenhum item conciliado no período filtrado.</div>
+        </div>
+    </div>
+
+    <!-- BARRA DE AÇÃO (Aparece ao selecionar 1 de cada lado) -->
+    <div class="action-bar" id="actionBar">
+        <div class="action-summary">
+            <span><i class="ph ph-link"></i> Vinculando:</span>
+            <span>Banco: <b id="lblSelBanco">R$ 0,00</b></span>
+            <span>App: <b id="lblSelApp">R$ 0,00</b></span>
+            <span id="lblDiferenca" style="margin-left: 10px; font-weight: 700;"></span>
+        </div>
+        <button class="btn btn-primary" onclick="vincularManualmente()">Confirmar Vínculo ✓</button>
+    </div>
+
+    <!-- Firebase Scripts -->
+    
+<div class="toast-container" id="toastContainer"></div>
+</body>
+</html>

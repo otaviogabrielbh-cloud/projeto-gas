@@ -1093,9 +1093,6 @@
             padding: 10px !important;
         }
     </style>
-    <!-- VPS Socket.IO & Adapter (Primeiros Scripts) -->
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-    <script src="js/vps-adapter.js"></script>
 </head>
 
 <body>
@@ -1104,7 +1101,7 @@
     <div id="loginScreen" class="login-overlay">
         <div class="login-card">
             <div class="logo-container">
-                <img src="logo.png" alt="Logo">
+                <img src="https://github.com/otaviogabrielbh-cloud/projeto-gas/raw/refs/heads/main/logo.png" alt="Logo">
             </div>
             <h2>Bem-vindo!</h2>
             <p>Escolha o seu perfil para entrar:</p>
@@ -1343,7 +1340,7 @@
 
         <div class="container" id="topo">
             <div class="logo-container">
-                <img src="logo.png"
+                <img src="https://github.com/otaviogabrielbh-cloud/projeto-gas/raw/refs/heads/main/logo.png"
                     alt="Logo Canoas Gás" id="imgLogo">
             </div>
 
@@ -1583,7 +1580,6 @@
                 <button class="btn-backup" id="btnVendasDia" onclick="window.abrirModalVendasDia()" style="background: linear-gradient(135deg, #10ac84 0%, #1dd1a1 100%); box-shadow: 0 4px 15px rgba(16,172,132,0.25);">📅 Vendas Dia</button>
                 <button class="btn-backup" id="btnMapaEntregas" onclick="window.location.href='mapadeentregas.html'" style="background: linear-gradient(135deg, #0984e3 0%, #6c5ce7 100%); box-shadow: 0 4px 15px rgba(9,132,227,0.25);">🗺️ Mapa de Entregas</button>
                 <button class="btn-backup" id="btnAlertaProximidade" onclick="window.location.href='alertaproximidade.html'" style="background: linear-gradient(135deg, #25d366 0%, #128c7e 100%); box-shadow: 0 4px 15px rgba(37,211,102,0.3); color:white; font-weight:700;">📡 Radar de Proximidade</button>
-                <button class="btn-backup" id="btnConfigWhatsApp" onclick="window.location.href='whatsapp-config.html'" style="background: linear-gradient(135deg, #128C7E 0%, #075E54 100%); box-shadow: 0 4px 15px rgba(18,140,126,0.3); color:white; font-weight:700;">⚙️ Config WhatsApp</button>
             </div>
 
             <div class="table-wrap">
@@ -2285,12 +2281,6 @@
                 document.getElementById('loginPassword').focus();
             } else {
                 document.getElementById('delivererSection').classList.remove('hidden');
-                if (typeof window.renderizarEquipe === 'function') {
-                    const cache = JSON.parse(localStorage.getItem('cache_equipe') || '[]');
-                    if (cache.length > 0) {
-                        window.renderizarEquipe(window.equipeEntregadores && window.equipeEntregadores.length > 0 ? window.equipeEntregadores : cache);
-                    }
-                }
             }
         }
 
@@ -3015,35 +3005,35 @@
         };
     </script>
 
-    <script>
-        // --- VPS CONFIG & BRIDGE ---
-        const ref = window.firebaseRef;
-        const onValue = window.firebaseOnValue;
-        const set = window.firebaseSet;
-        const push = window.firebasePush;
-        const update = window.firebaseUpdate;
-        const remove = window.firebaseRemove;
-        const get = window.firebaseGet;
-        const onDisconnect = window.firebaseOnDisconnect;
-        const remoteDb = window.remoteDb;
-        window.remoteDb = "vps";
+    <script type="module">
+        // --- FIREBASE CONFIG ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, set, get, onValue, push, remove, update, onDisconnect } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-        // Sincronização em tempo real das configurações do WhatsApp salvas no Firebase
-        try {
-            onValue(ref(remoteDb, 'configuracoes_whatsapp'), (snapshot) => {
-                const cfg = snapshot.val();
-                if (cfg) {
-                    if (cfg.wp_url) localStorage.setItem('wp_url', cfg.wp_url);
-                    if (typeof cfg.wp_auto_cliente !== 'undefined') localStorage.setItem('wp_auto_cliente', String(cfg.wp_auto_cliente));
-                    if (typeof cfg.wp_auto_entregador !== 'undefined') localStorage.setItem('wp_auto_entregador', String(cfg.wp_auto_entregador));
-                    if (cfg.wp_msg_cliente) localStorage.setItem('wp_msg_cliente', cfg.wp_msg_cliente);
-                    if (cfg.wp_msg_entregador) localStorage.setItem('wp_msg_entregador', cfg.wp_msg_entregador);
-                    console.log("☁️ [Firebase] Configurações de WhatsApp sincronizadas no painel.");
-                }
-            });
-        } catch (e) {
-            console.warn("Aviso ao escutar configuracoes_whatsapp:", e);
-        }
+        // Assigning Firebase functions to window so they're accessible everywhere
+        window.firebaseRef = ref;
+        window.firebaseSet = set;
+        window.firebaseGet = get;
+        window.firebaseOnValue = onValue;
+        window.firebasePush = push;
+        window.firebaseRemove = remove;
+        window.firebaseUpdate = update;
+        window.firebaseOnDisconnect = onDisconnect;
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyB-4XspbY5GalueBG8JGUJ7BfdQvPh8d1c",
+            authDomain: "canoas-gas.firebaseapp.com",
+            databaseURL: "https://canoas-gas-default-rtdb.firebaseio.com",
+            projectId: "canoas-gas",
+            storageBucket: "canoas-gas.firebasestorage.app",
+            messagingSenderId: "657432003828",
+            appId: "1:657432003828:web:40c6eca9096896f955caa1",
+            measurementId: "G-3SMNWNELJ5"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const remoteDb = getDatabase(app);
+        window.remoteDb = remoteDb; // Make it global for easier access
 
         // Declarations
         let db;
@@ -3062,21 +3052,9 @@
         window.atualizarDatalist = atualizarDatalist;
         window.configurarEventos = configurarEventos;
         window.iniciarEscutaTempoReal = iniciarEscutaTempoReal;
-        window.renderizarEquipe = renderizarEquipe;
 
         // --- TEAM MANAGEMENT LOGIC ---
         function escutarEquipe() {
-            // Renderização imediata pelo cache para não travar em 'Carregando equipe...'
-            try {
-                const cacheInicial = JSON.parse(localStorage.getItem('cache_equipe') || '[]');
-                if (cacheInicial && cacheInicial.length > 0) {
-                    window.equipeEntregadores = cacheInicial;
-                    renderizarEquipe(cacheInicial);
-                }
-            } catch (e) {
-                console.warn("Erro ao ler cache_equipe:", e);
-            }
-
             const equipeRef = ref(remoteDb, 'equipe_entregadores');
             onValue(equipeRef, (snapshot) => {
                 const data = snapshot.val();
@@ -3853,9 +3831,6 @@
             }
         }
 
-        let isPrimeiraCargaBina = true;
-        let ultimaChamadaProcessadaTimestamp = 0;
-
         function escutarBina() {
             escutarBinaListPainel();
             const binaRef = ref(remoteDb, 'bina_live');
@@ -3865,83 +3840,33 @@
                     const numero = data.numero;
                     const timestamp = data.timestamp || 0;
 
-                    // NÃ£o reprocessar se for exatamente o mesmo timestamp jÃ¡ tratado
-                    if (timestamp && timestamp === ultimaChamadaProcessadaTimestamp) return;
-
+                    // Só processar se a chamada for recente (últimos 30 segundos)
+                    // Isso evita preencher o campo com uma chamada antiga ao carregar a página
                     const agora = Date.now();
+                    if (agora - timestamp > 30000) return;
 
-                    // Na primeira conexÃ£o ao carregar a pÃ¡gina:
-                    // Se o registro no banco tiver mais de 45 segundos (ou futuro distante), ignora
-                    // para nÃ£o preencher o formulÃ¡rio com ligaÃ§Ã£o antiga
-                    if (isPrimeiraCargaBina) {
-                        isPrimeiraCargaBina = false;
-                        ultimaChamadaProcessadaTimestamp = timestamp;
-                        if (timestamp && (agora - timestamp > 45000 || timestamp - agora > 45000)) {
-                            console.log("ðŸ“ž Bina inicial antiga ignorada:", numero);
-                            return;
-                        }
-                    }
-
-                    // Se a chamada for mais velha que 5 minutos, ignora
-                    if (timestamp && Math.abs(agora - timestamp) > 300000) {
-                        console.log("ðŸ“ž Bina expirada ignorada:", numero);
-                        return;
-                    }
-
-                    ultimaChamadaProcessadaTimestamp = timestamp;
-                    console.log("ðŸ“ž Bina recebida do AMORA:", numero, data);
+                    console.log("📞 Bina detectada:", numero);
 
                     const inputTel = document.getElementById('telefone');
                     if (inputTel) {
+                        // Limpa o formulário antes de preencher o novo número (opcional, para evitar confusão)
+                        // window.btnLimparFormulario(); // Se existir essa função global
+
                         inputTel.value = numero;
+                        // Dispara a máscara e a busca de histórico automática
+                        window.mascaraTelefone(inputTel);
 
-                        // Aplica formataÃ§Ã£o segura
-                        if (typeof mascaraTelefone === 'function') {
-                            mascaraTelefone(inputTel);
-                        } else if (typeof window.mascaraTelefone === 'function') {
-                            window.mascaraTelefone(inputTel);
-                        }
+                        // Notificação visual
+                        mostrarNotificacaoConclusao(`📞 Chamada Recebida: ${numero} `);
 
-                        // Dispara eventos de input e change para ativar listeners do sistema
-                        inputTel.dispatchEvent(new Event('input', { bubbles: true }));
-                        inputTel.dispatchEvent(new Event('change', { bubbles: true }));
-
-                        // Se o AMORA jÃ¡ enviou dados do cliente identificado no Firebase,
-                        // preenche nome e endereÃ§o caso estejam vazios
-                        if (data.cliente_encontrado) {
-                            const inpCliente = document.getElementById('cliente');
-                            const inpEndereco = document.getElementById('endereco');
-                            const inpObs = document.getElementById('obs') || document.getElementById('observacoes');
-                            if (inpCliente && data.nome_cliente && !inpCliente.value) {
-                                inpCliente.value = data.nome_cliente;
-                                inpCliente.dispatchEvent(new Event('input', { bubbles: true }));
-                            }
-                            if (inpEndereco && data.endereco && !inpEndereco.value) {
-                                inpEndereco.value = data.endereco;
-                                inpEndereco.dispatchEvent(new Event('input', { bubbles: true }));
-                            }
-                            if (inpObs && data.observacoes && !inpObs.value) {
-                                inpObs.value = data.observacoes;
-                                inpObs.dispatchEvent(new Event('input', { bubbles: true }));
-                            }
-                        }
-
-                        // Notificação visual destacada
-                        const nomeMsg = data.nome_cliente ? `${data.nome_cliente} (${numero})` : numero;
-                        if (typeof mostrarNotificacaoConclusao === 'function') {
-                            mostrarNotificacaoConclusao(`📞 Chamada AMORA: ${nomeMsg}`);
-                        } else if (typeof window.mostrarMensagemSucesso === 'function') {
-                            window.mostrarMensagemSucesso(`📞 Chamada AMORA: ${nomeMsg}`);
-                        }
-
-                        // Tocar alerta sonoro
+                        // Tocar um bipe discreto
                         try {
                             const ctx = new (window.AudioContext || window.webkitAudioContext)();
                             const osc = ctx.createOscillator();
-                            osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+                            osc.frequency.setValueAtTime(440, ctx.currentTime);
                             osc.connect(ctx.destination);
                             osc.start();
-                            osc.stop(ctx.currentTime + 0.2);
+                            osc.stop(ctx.currentTime + 0.1);
                         } catch (e) { }
                     }
                 }
@@ -6144,172 +6069,6 @@
             modal.style.display = 'block';
         }
 
-        window.dispararWhatsapp = async function(dados, textoEntregador, textoCliente) {
-            try {
-                // Tratar variáveis na mensagem
-                const substituirVariaveis = (template) => {
-                    if (!template) return '';
-                    let t = template;
-                    t = t.replace(/{{nome_cliente}}/g, dados.cliente || '');
-                    t = t.replace(/{{endereco}}/g, dados.endereco || '');
-                    t = t.replace(/{{produto}}/g, dados.produto || '');
-                    t = t.replace(/{{quantidade}}/g, dados.qtd || '');
-                    t = t.replace(/{{valor}}/g, dados.valor || '');
-                    t = t.replace(/{{telefone_cliente}}/g, dados.telefone || '');
-                    t = t.replace(/{{forma_pagamento}}/g, dados.pagamento || '');
-                    t = t.replace(/{{info_adc}}/g, dados.informacoes || '');
-                    
-                    // Buscar nome do entregador para template (opcional)
-                    const entregadorNome = (dados.entregador && dados.entregador !== 'PESQUISA') ? dados.entregador.trim() : '';
-                    t = t.replace(/{{nome_entregador}}/g, entregadorNome);
-                    
-                    return t;
-                };
-
-                const urlApi = localStorage.getItem('wp_url') || 'http://localhost:3000/send-message';
-                const autoCliente = localStorage.getItem('wp_auto_cliente') === 'true';
-                const autoEntregador = localStorage.getItem('wp_auto_entregador') === 'true';
-                
-                const msgCriacaoCliente = localStorage.getItem('wp_msg_cliente');
-                const msgCriacaoEntregador = localStorage.getItem('wp_msg_entregador');
-
-                // Função para adicionar à Fila da Nuvem (Firebase) garantindo envio pelo Notebook
-                const enfileirarMensagemNuvem = (telefone, mensagem, tipo, destinatario) => {
-                    let itemRef = null;
-                    if (window.firebasePush && window.firebaseRef && window.remoteDb) {
-                        try {
-                            itemRef = window.firebasePush(window.firebaseRef(window.remoteDb, 'fila_whatsapp'));
-                            window.firebaseSet(itemRef, {
-                                telefone: '55' + telefone,
-                                mensagem: mensagem,
-                                tipo: tipo,
-                                destinatario: destinatario || '',
-                                cliente: dados.cliente || '',
-                                status: 'pendente',
-                                criadoEm: Date.now(),
-                                origem: 'gerenciador_pedidos'
-                            });
-                            console.log(`☁️ [Fila WhatsApp] Mensagem para ${tipo} (${destinatario || telefone}) adicionada à nuvem.`);
-                        } catch (errFila) {
-                            console.warn("⚠️ Erro ao salvar na fila do Firebase:", errFila);
-                        }
-                    }
-                    return itemRef;
-                };
-
-                // Disparo Cliente
-                if (autoCliente && dados.telefone) {
-                    const telLimpo = dados.telefone.replace(/\D/g, '');
-                    if (telLimpo.length >= 10) { 
-                        let msgCliente = substituirVariaveis(msgCriacaoCliente) || textoCliente;
-                        const filaRefCli = enfileirarMensagemNuvem(telLimpo, msgCliente, 'cliente', dados.cliente || 'Cliente');
-
-                        // Tenta envio direto se o servidor estiver rodando nesta mesma máquina
-                        fetch(urlApi, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ phone: '55' + telLimpo, message: msgCliente })
-                        }).then(res => {
-                            if (res.ok && filaRefCli && window.firebaseUpdate) {
-                                // Se já enviou diretamente, marca na fila para não reenviar
-                                window.firebaseUpdate(filaRefCli, { status: 'enviado', enviadoDireto: true, enviadoEm: Date.now() });
-                            }
-                        }).catch(e => {
-                            console.log("ℹ️ Envio direto não conectado; a fila do Firebase assumirá o envio pelo Notebook.");
-                        });
-                    }
-                }
-
-                // Disparo Entregador
-                if (autoEntregador && dados.entregador && dados.entregador !== 'PESQUISA') {
-                    const entregadorNome = dados.entregador.trim();
-                    const sanitizarChaveCracha = (str) => {
-                        return (str || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim().replace(/[^A-Z0-9]/g, "_");
-                    };
-                    const chave = sanitizarChaveCracha(entregadorNome);
-                    
-                    // Inicializar cache se disponível
-                    if (!window.crachasCadastrados) {
-                        try {
-                            const cached = localStorage.getItem('cache_crachas_entregadores');
-                            if (cached) window.crachasCadastrados = JSON.parse(cached);
-                        } catch (e) {}
-                    }
-                    
-                    let cracha = null;
-                    if (window.crachasCadastrados && window.crachasCadastrados[chave]) {
-                        cracha = window.crachasCadastrados[chave];
-                    } else if (window.crachasCadastrados) {
-                        cracha = Object.values(window.crachasCadastrados).find(c => {
-                            const cNome = sanitizarChaveCracha(c.nome || '');
-                            const cId = sanitizarChaveCracha(c.id || '');
-                            return cNome === chave || cId === chave || cNome.startsWith(chave) || chave.startsWith(cNome);
-                        }) || null;
-                    }
-
-                    if (!cracha && window.firebaseGet && window.firebaseRef && window.remoteDb) {
-                        try {
-                            const snap = await window.firebaseGet(window.firebaseRef(window.remoteDb, 'crachas_entregadores/' + chave));
-                            if (snap && snap.exists()) {
-                                cracha = snap.val();
-                                if (!window.crachasCadastrados) window.crachasCadastrados = {};
-                                window.crachasCadastrados[chave] = cracha;
-                            } else {
-                                // Fallback inteligente: buscar em todos os crachás caso o nome esteja abreviado ou com sobrenome
-                                const allSnap = await window.firebaseGet(window.firebaseRef(window.remoteDb, 'crachas_entregadores'));
-                                if (allSnap && allSnap.exists()) {
-                                    const todos = allSnap.val() || {};
-                                    cracha = Object.values(todos).find(c => {
-                                        const cNome = sanitizarChaveCracha(c.nome || '');
-                                        const cId = sanitizarChaveCracha(c.id || '');
-                                        return cNome === chave || cId === chave || cNome.startsWith(chave) || chave.startsWith(cNome);
-                                    }) || null;
-                                    if (cracha) {
-                                        if (!window.crachasCadastrados) window.crachasCadastrados = {};
-                                        window.crachasCadastrados[chave] = cracha;
-                                    }
-                                }
-                            }
-                        } catch (e) {
-                            console.warn("Erro ao buscar crachá:", e);
-                        }
-                    }
-
-                    const foneEntregadorRaw = cracha ? (cracha.telefone || cracha.whatsapp || '') : '';
-                    if (foneEntregadorRaw) {
-                        let telEntregador = foneEntregadorRaw.replace(/\D/g, '');
-                        if (telEntregador && telEntregador.length >= 10) {
-                            let msgEntregador = substituirVariaveis(msgCriacaoEntregador) || textoEntregador;
-                            const filaRefEnt = enfileirarMensagemNuvem(telEntregador, msgEntregador, 'entregador', dados.entregador);
-
-                            // Tenta envio direto se o servidor estiver nesta máquina
-                            fetch(urlApi, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ phone: '55' + telEntregador, message: msgEntregador })
-                            }).then(res => {
-                                if (res.ok) {
-                                    console.log(`✅ WhatsApp direto para entregador ${dados.entregador} (${telEntregador})`);
-                                    if (filaRefEnt && window.firebaseUpdate) {
-                                        window.firebaseUpdate(filaRefEnt, { status: 'enviado', enviadoDireto: true, enviadoEm: Date.now() });
-                                    }
-                                }
-                            }).catch(e => {
-                                console.log("ℹ️ Envio direto não conectado; a fila do Firebase assumirá o envio pelo Notebook.");
-                            });
-                        } else {
-                            console.warn("Telefone do entregador inválido (menos de 10 dígitos):", foneEntregadorRaw);
-                        }
-                    } else {
-                        console.warn(`Crachá ou telefone não encontrado para o entregador "${dados.entregador}".`);
-                    }
-                }
-
-            } catch (e) {
-                console.error("Erro no processamento do whatsapp:", e);
-            }
-        };
-
         function salvarEFinalizarPedido(dados, displayProd, isPortaria, isPesquisa, textoEntregador, textoCliente) {
             // Salvar no Firebase (Fonte de Verdade Real-time)
             push(ref(remoteDb, 'pedidos_realtime'), dados).then((snapshot) => {
@@ -6336,11 +6095,6 @@
                 atualizarDatalist();
                 document.getElementById('topo').scrollIntoView({ behavior: 'smooth' });
                 if (!isPesquisa && typeof window.imprimirRecibo === 'function') window.imprimirRecibo(dados, displayProd, false, false, true);
-                
-                // Disparo de Whatsapp
-                if (!isPesquisa && !isPortaria) {
-                    window.dispararWhatsapp(dados, textoEntregador, textoCliente);
-                }
                 return;
             }
 
@@ -6374,11 +6128,6 @@
                 // Impressão térmica automática por tipo de pagamento (Forçada pelo clique no botão)
                 if (!isPesquisa && typeof window.imprimirRecibo === 'function') {
                     window.imprimirRecibo(dados, displayProd, false, false, true);
-                }
-
-                // Disparo de Whatsapp
-                if (!isPesquisa && !isPortaria) {
-                    window.dispararWhatsapp(dados, textoEntregador, textoCliente);
                 }
             };
         }
@@ -6585,8 +6334,6 @@
             campo.value = valor;
             if (valor.length >= 14) { buscarUltimoPedidoPorTelefone(valor); }
         }
-        window.mascaraTelefone = mascaraTelefone;
-        if (typeof mascaraMoeda === 'function') { window.mascaraMoeda = mascaraMoeda; }
 
         function buscarUltimoPedidoPorTelefone(tel) {
             const historico = window.todosPedidosFirebase.filter(p => p.telefone === tel);

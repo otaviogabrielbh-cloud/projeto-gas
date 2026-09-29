@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Financeiro Premium - Canoas Gás</title>
+    <link rel="icon" type="image/x-icon"
+        href="https://github.com/otaviogabrielbh-cloud/projeto-gas/raw/refs/heads/main/LOGO.ico">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Poppins:wght@300;400;600&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* DESIGN PREMIUM: MESH GRADIENT DARK MODE WITH GLASSMORPHISM */
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 15% 15%, rgba(34, 197, 94, 0.08) 0%, transparent 25%),
+                radial-gradient(circle at 85% 85%, rgba(239, 68, 68, 0.08) 0%, transparent 25%),
+                radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.05) 0%, transparent 35%);
+            z-index: -2;
+            animation: meshRotate 40s linear infinite;
+        }
+
+        @keyframes meshRotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .dashboard-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+
+        /* HEADER GLASSMORPHISM */
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(30, 41, 59, 0.6);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 24px 30px;
+            border-radius: 24px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .header-title h1 {
+            margin: 0;
+            font-family: 'Outfit', sans-serif;
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #4ade80 0%, #2ecc71 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header-title p {
+            margin: 6px 0 0 0;
+            font-size: 13px;
+            color: #94a3b8;
+        }
+
+        .btn-voltar {
+            background: rgba(255, 255, 255, 0.05);
+            color: #f8fafc;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 12px 24px;
+            border-radius: 16px;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-voltar:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+
+        /* FILTERS ROW */
+        .filters-bar {
+            background: rgba(30, 41, 59, 0.4);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            border-radius: 20px;
+            margin-bottom: 30px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: flex-end;
+        }
+
+        .filter-group {
+            flex: 1;
+            min-width: 180px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .filter-group label {
+            font-size: 11px;
+            font-weight: 600;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .filters-bar input, .filters-bar select {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border-radius: 12px;
+            padding: 12px;
+            font-family: inherit;
+            outline: none;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .filters-bar input:focus {
+            border-color: #2ecc71;
+            box-shadow: 0 0 8px rgba(46, 204, 113, 0.2);
+        }
+
+        .btn-action {
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-family: 'Outfit';
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-print {
+            background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+            color: #0f172a;
+        }
+
+        .btn-print:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(255, 255, 255, 0.1);
+        }
+
+        /* GRID STATS (KPI CARDS WITH PREMIUM DESIGN) */
+        .grid-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 35px;
+        }
+
+        .stat-card {
+            background: rgba(30, 41, 59, 0.5);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 24px;
+            padding: 26px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.25);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .card-receitas::before { background: linear-gradient(90deg, #4ade80, #22c55e); }
+        .card-gastos::before { background: linear-gradient(90deg, #f87171, #ef4444); }
+        .card-lucro::before { background: linear-gradient(90deg, #60a5fa, #3b82f6); }
+
+        .stat-label {
+            font-size: 13px;
+            color: #94a3b8;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        .stat-value {
+            font-size: 34px;
+            font-weight: 800;
+            font-family: 'Outfit', sans-serif;
+            line-height: 1.1;
+        }
+
+        .card-receitas .stat-value { color: #4ade80; text-shadow: 0 0 20px rgba(74, 222, 128, 0.15); }
+        .card-gastos .stat-value { color: #f87171; text-shadow: 0 0 20px rgba(248, 113, 113, 0.15); }
+        .card-lucro .stat-value { color: #60a5fa; text-shadow: 0 0 20px rgba(96, 165, 250, 0.15); }
+
+        .stat-subtitle {
+            font-size: 11px;
+            color: #64748b;
+            margin-top: 8px;
+        }
+
+        /* GRID MAIN CONTENT (CHARTS) */
+        .grid-charts {
+            display: grid;
+            grid-template-columns: 1fr 450px;
+            gap: 25px;
+            margin-bottom: 35px;
+        }
+
+        @media (max-width: 1024px) {
+            .grid-charts {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .chart-box {
+            background: rgba(30, 41, 59, 0.5);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 24px;
+            padding: 24px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+        }
+
+        .chart-box-title {
+            font-family: 'Outfit';
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chart-box-title span {
+            color: #94a3b8;
+            font-size: 12px;
+            font-weight: 400;
+        }
+
+        .canvas-container {
+            position: relative;
+            height: 350px;
+            width: 100%;
+        }
+
+        /* BOTTOM LAYOUT: FORM AND RECENT ENTRIES */
+        .grid-bottom {
+            display: grid;
+            grid-template-columns: 450px 1fr;
+            gap: 25px;
+        }
+
+        @media (max-width: 1024px) {
+            .grid-bottom {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .form-box {
+            background: rgba(30, 41, 59, 0.5);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 24px;
+            padding: 24px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            font-size: 12px;
+            color: #94a3b8;
+            font-weight: 600;
+        }
+
+        .form-group input, .form-group select {
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            padding: 12px;
+            border-radius: 12px;
+            font-family: inherit;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            border-color: #2ecc71;
+        }
+
+        .btn-submit {
+            background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+            color: white;
+            border: none;
+            width: 100%;
+            padding: 14px;
+            border-radius: 12px;
+            font-weight: 800;
+            font-family: 'Outfit';
+            font-size: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(46, 204, 113, 0.2);
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(46, 204, 113, 0.3);
+        }
+
+        .table-box {
+            background: rgba(30, 41, 59, 0.5);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 24px;
+            padding: 24px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            flex: 1;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            background: rgba(15, 23, 42, 0.6) !important;
+            color: #f8fafc !important;
+            min-width: unset !important;
+        }
+
+        th {
+            background: rgba(30, 41, 59, 0.8) !important;
+            padding: 14px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.05);
+            color: #94a3b8 !important;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        td {
+            padding: 14px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 13px;
+            color: #cbd5e1 !important;
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.05) !important;
+        }
+
+        .tag-despesa {
+            background: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .tag-receita {
+            background: rgba(34, 197, 94, 0.15);
+            color: #4ade80;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .btn-delete {
+            background: transparent;
+            border: none;
+            color: #f87171;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 4px;
+            transition: transform 0.2s;
+        }
+
+        .btn-delete:hover {
+            transform: scale(1.2);
+        }
+
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0f172a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            font-family: 'Outfit';
+            font-size: 24px;
+            font-weight: 800;
+            color: #2ecc71;
+        }
+
+        /* MODAL DE DETALHES */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.75);
+            z-index: 9000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+        .modal-box {
+            background: #1e293b;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 24px;
+            padding: 30px;
+            width: 90%;
+            max-width: 600px;
+            position: relative;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            animation: slideUp 0.25s ease;
+        }
+        @keyframes slideUp {
+            from { transform: translateY(30px); opacity: 0; }
+            to   { transform: translateY(0);   opacity: 1; }
+        }
+        .modal-close {
+            position: absolute;
+            top: 16px;
+            right: 20px;
+            background: rgba(255,255,255,0.08);
+            border: none;
+            color: #f8fafc;
+            font-size: 20px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+            min-width: unset;
+            padding: 0;
+        }
+        .modal-close:hover { background: rgba(255,255,255,0.18); }
+        .modal-title {
+            font-family: 'Outfit';
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+        .modal-subtitle {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-bottom: 20px;
+        }
+        .modal-canvas-wrap {
+            position: relative;
+            height: 280px;
+        }
+        @media print {
+            body {
+                background: #fff !important;
+                color: #000 !important;
+            }
+
+            body::before { display: none !important; }
+            .no-print, .btn-voltar, .filters-bar, .form-box, .btn-delete, th:last-child, td:last-child {
+                display: none !important;
+            }
+
+            .dashboard-container {
+                padding: 0 !important;
+                margin: 0 !important;
+                max-width: 100% !important;
+            }
+
+            .dashboard-header {
+                background: none !important;
+                border: none !important;
+                box-shadow: none !important;
+                padding: 10px 0 !important;
+                margin-bottom: 20px !important;
+            }
+
+            .dashboard-header h1 {
+                -webkit-text-fill-color: initial !important;
+                color: #000 !important;
+            }
+
+            .grid-stats {
+                grid-template-columns: repeat(3, 1fr) !important;
+                gap: 15px !important;
+                margin-bottom: 20px !important;
+            }
+
+            .stat-card {
+                background: #f8fafc !important;
+                border: 1px solid #cbd5e1 !important;
+                color: #000 !important;
+                box-shadow: none !important;
+                padding: 15px !important;
+            }
+
+            .stat-value {
+                color: #000 !important;
+                text-shadow: none !important;
+            }
+
+            .grid-charts {
+                grid-template-columns: 1fr !important;
+                gap: 20px !important;
+                page-break-after: always;
+            }
+
+            .chart-box {
+                background: #fff !important;
+                border: 1px solid #cbd5e1 !important;
+                box-shadow: none !important;
+                color: #000 !important;
+            }
+
+            .grid-bottom {
+                grid-template-columns: 1fr !important;
+            }
+
+            .table-box {
+                background: #fff !important;
+                border: 1px solid #cbd5e1 !important;
+                box-shadow: none !important;
+                color: #000 !important;
+            }
+
+            table { color: #000 !important; }
+            th { border-bottom-color: #000 !important; color: #000 !important; }
+            td { border-bottom-color: #f1f5f9 !important; }
+            .tag-despesa { background: #fee2e2 !important; color: #b91c1c !important; }
+            .tag-receita { background: #dcfce7 !important; color: #15803d !important; }
+        }
+    </style>
+    <!-- VPS Socket.IO & Adapter (Primeiros Scripts) -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="js/vps-adapter.js"></script>
+</head>
+
+<body>
+    <div id="loadingScreen" class="loading-screen">
+        INICIALIZANDO CONEXÃO FINANCEIRA...
+    </div>
+
+    <div class="dashboard-container">
+        <!-- HEADER -->
+        <header class="dashboard-header">
+            <div class="header-title">
+                <h1>💰 Painel Financeiro Premium</h1>
+                <p>Análise de receitas, despesas categorizadas e lucros reais do SaaS</p>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <a href="conciliacao.html" class="btn-action btn-print no-print" style="background: var(--primary-color); border: none; padding: 0.6rem 1rem;">
+                    🔗 Conciliação MP
+                </a>
+                <a href="index.html" class="btn-voltar no-print">
+                    <span>⬅</span> Voltar para Pedidos
+                </a>
+            </div>
+        </header>
+
+        <!-- FILTROS -->
+        <section class="filters-bar no-print">
+            <div class="filter-group">
+                <label>Data Início</label>
+                <input type="date" id="filtroDataInicio">
+            </div>
+            <div class="filter-group">
+                <label>Data Fim</label>
+                <input type="date" id="filtroDataFim">
+            </div>
+            <button class="btn-action btn-print" onclick="window.print()">
+                🖨️ Gerar PDF / Imprimir
+            </button>
+        </section>
+
+        <!-- CARDS KPI -->
+        <section class="grid-stats">
+            <div class="stat-card card-receitas">
+                <div class="stat-label">Receitas Totais</div>
+                <div id="valReceitas" class="stat-value">R$ 0,00</div>
+                <div class="stat-subtitle">Faturamento das vendas concluídas</div>
+            </div>
+            <div class="stat-card card-gastos">
+                <div class="stat-label">Gastos Totais</div>
+                <div id="valGastos" class="stat-value">R$ 0,00</div>
+                <div class="stat-subtitle">Despesas de estoque + taxas + gastos adicionais</div>
+            </div>
+            <div class="stat-card card-lucro">
+                <div class="stat-label">Lucro Líquido</div>
+                <div id="valLucro" class="stat-value">R$ 0,00</div>
+                <div class="stat-subtitle">Margem líquida após todas as deduções</div>
+            </div>
+        </section>
+
+        <!-- GRÁFICOS -->
+        <section class="grid-charts">
+            <div class="chart-box">
+                <div class="chart-box-title">
+                    Fluxo de Caixa <span>Entradas vs Saídas por Data</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="chartFluxoCaixa"></canvas>
+                </div>
+            </div>
+            <div class="chart-box">
+                <div class="chart-box-title">
+                    Detalhamento de Gastos <span>Distribuição por Categoria</span>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="chartCategoriasGastos"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- CADASTRO E DETALHES -->
+        <section class="grid-bottom">
+            <!-- Formulário no-print -->
+            <div class="form-box no-print">
+                <div class="chart-box-title" style="margin-bottom:15px">💸 Cadastrar Despesa</div>
+                <div class="form-group">
+                    <label>Valor (R$)</label>
+                    <input type="number" id="gastoValor" step="0.01" placeholder="0,00" required>
+                </div>
+                <div class="form-group">
+                    <label>Descrição / Categoria</label>
+                    <input type="text" id="gastoDescricao" placeholder="Ex: Luz, Água, Tarifas Bancárias, Gasolina" required>
+                </div>
+                <div class="form-group">
+                    <label>🏷️ Grupo</label>
+                    <select id="gastoGrupo">
+                        <option value="Sem grupo">Sem grupo</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Forma de Pagamento</label>
+                    <select id="gastoFormaPagamento">
+                        <option value="PIX">PIX</option>
+                        <option value="Dinheiro">Dinheiro</option>
+                        <option value="Débito">Débito</option>
+                        <option value="Crédito">Crédito</option>
+                        <option value="Boleto">Boleto</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Data do Gasto</label>
+                    <input type="date" id="gastoData" required>
+                </div>
+                <button class="btn-submit" onclick="lancarGasto()">💾 Cadastrar Gasto</button>
+            </div>
+
+            <!-- Tabela -->
+            <div class="table-box">
+                <div class="chart-box-title">
+                    Fluxo Recente de Transações
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Transação / Categoria</th>
+                                <th>Tipo</th>
+                                <th>Meio</th>
+                                <th>Valor</th>
+                                <th class="no-print">Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="corpoTabelaTransacoes">
+                            <!-- JS preencherá -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- MODAL: Detalhe de Receitas por Forma de Pagamento -->
+    <div id="modalDetalheReceita" class="modal-overlay" onclick="fecharModalDetalhe(event)">
+        <div class="modal-box">
+            <button class="modal-close" onclick="document.getElementById('modalDetalheReceita').classList.remove('active')">&#x2715;</button>
+            <div class="modal-title" id="modalDetalheTitle">Receitas do dia</div>
+            <div class="modal-subtitle" id="modalDetalheSubtitle">Distribuição por forma de pagamento</div>
+            <div class="modal-canvas-wrap">
+                <canvas id="chartDetalheReceita"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Detalhe de Gastos -->
+    <div id="modalDetalheGasto" class="modal-overlay" onclick="fecharModalDetalheGasto(event)">
+        <div class="modal-box">
+            <button class="modal-close" onclick="document.getElementById('modalDetalheGasto').classList.remove('active')">&#x2715;</button>
+            <div class="modal-title" id="modalDetalheGastoTitle">Despesas do dia</div>
+            <div class="modal-subtitle" id="modalDetalheGastoSubtitle">Distribuição de despesas e custos</div>
+            <div class="modal-canvas-wrap">
+                <canvas id="chartDetalheGasto"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase Scripts -->
+    
+</body>
+
+</html>

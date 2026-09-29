@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canoas Gás - Gestão de Clientes</title>
+
+    <link rel="icon" type="image/x-icon"
+        href="https://github.com/otaviogabrielbh-cloud/projeto-gas/raw/refs/heads/main/LOGO.ico">
+    <link rel="stylesheet" href="style.css">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Poppins:wght@300;400;600&display=swap"
+        rel="stylesheet">
+
+    <!-- VPS Socket.IO & Adapter -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="js/vps-adapter.js"></script>
+
+    <style>
+        .tabs-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 25px;
+            overflow-x: auto;
+            padding-bottom: 5px;
+        }
+
+        .tab-btn {
+            padding: 12px 20px;
+            border-radius: 16px;
+            border: none;
+            cursor: pointer;
+            font-family: var(--font-heading, 'Outfit', sans-serif);
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.6);
+            color: #636e72;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, #0e806c, #0a584a);
+            color: white;
+            box-shadow: 0 4px 15px rgba(14, 128, 108, 0.3);
+        }
+
+        .search-box-wrap {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.05);
+            margin-bottom: 25px;
+        }
+
+        .search-input-field {
+            width: 100%;
+            padding: 14px 20px;
+            border-radius: 14px;
+            border: 1.5px solid rgba(14, 128, 108, 0.2);
+            background: white;
+            font-size: 15px;
+            font-family: inherit;
+            outline: none;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+            margin-bottom: 15px;
+        }
+
+        .search-input-field:focus {
+            border-color: #0e806c;
+            box-shadow: 0 0 0 3px rgba(14, 128, 108, 0.15);
+        }
+
+        .chips-container {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .filter-chip {
+            padding: 8px 18px;
+            border-radius: 50px;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            background: white;
+            font-size: 13px;
+            font-weight: 600;
+            color: #636e72;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .filter-chip:hover {
+            background: #f1f2f6;
+        }
+
+        .filter-chip.active {
+            background: #0e806c;
+            color: white;
+            border-color: #0e806c;
+            box-shadow: 0 2px 8px rgba(14, 128, 108, 0.25);
+        }
+
+        .customer-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
+            margin-top: 10px;
+        }
+
+        .customer-card-premium {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            border-radius: 20px;
+            padding: 20px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            position: relative;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .customer-card-premium:hover {
+            transform: translateY(-4px);
+            background: white;
+            box-shadow: 0 12px 30px rgba(14, 128, 108, 0.12);
+            border-color: #0e806c;
+        }
+
+        .customer-card-premium.selected {
+            border: 2px solid #0e806c;
+            background: white;
+        }
+
+        .avatar-premium {
+            width: 46px;
+            height: 46px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #0e806c, #16a085);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-family: var(--font-heading, 'Outfit', sans-serif);
+            font-size: 16px;
+            box-shadow: 0 4px 10px rgba(14, 128, 108, 0.25);
+        }
+
+        .customer-name-premium {
+            font-family: var(--font-heading, 'Outfit', sans-serif);
+            font-weight: 700;
+            font-size: 16px;
+            color: #2d3436;
+            margin-top: 12px;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .customer-meta-premium {
+            font-size: 12.5px;
+            color: #636e72;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .status-badge {
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 10.5px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: inline-block;
+        }
+
+        .badge-ativo { background: #e8f5e9; color: #2e7d32; }
+        .badge-inativo { background: #ffebee; color: #c62828; }
+        .badge-blacklist { background: #2d3436 !important; color: #ff7675 !important; }
+
+        .customer-card-premium.blacklisted {
+            border: 1.5px solid #ff7675;
+            background: rgba(255, 235, 238, 0.4);
+        }
+
+        .customer-card-premium.blacklisted .avatar-premium {
+            background: linear-gradient(135deg, #2d3436, #d63031) !important;
+        }
+
+        .form-section-header {
+            font-family: var(--font-heading, 'Outfit', sans-serif);
+            font-weight: 700;
+            font-size: 14px;
+            color: #0e806c;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 25px 0 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-section-header::after {
+            content: '';
+            flex: 1;
+            height: 1.5px;
+            background: linear-gradient(90deg, rgba(14, 128, 108, 0.3), transparent);
+        }
+
+        .stats-grid-premium {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .stat-card-premium {
+            background: white;
+            padding: 18px;
+            border-radius: 16px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
+            border: 1px solid rgba(0,0,0,0.04);
+        }
+
+        .stat-val-premium {
+            font-family: var(--font-heading, 'Outfit', sans-serif);
+            font-weight: 800;
+            font-size: 24px;
+            color: #0e806c;
+            line-height: 1.1;
+        }
+
+        .stat-lbl-premium {
+            font-size: 11.5px;
+            color: #95a5a6;
+            margin-top: 4px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .toast-customer {
+            position: fixed;
+            bottom: 25px;
+            right: 25px;
+            background: #2d3436;
+            color: white;
+            padding: 14px 22px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transform: translateY(120%);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .toast-customer.show {
+            transform: translateY(0);
+        }
+
+        .checkbox-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            user-select: none;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .checkbox-wrapper input {
+            width: 18px;
+            height: 18px;
+            accent-color: #0e806c;
+            cursor: pointer;
+        }
+
+        .checkbox-wrapper.blacklist-wrapper input {
+            accent-color: #d63031;
+        }
+
+        .checkbox-wrapper.blacklist-wrapper span {
+            color: #d63031;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-spinner {
+            width: 32px;
+            height: 32px;
+            border: 4px solid rgba(14, 128, 108, 0.2);
+            border-top: 4px solid #0e806c;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 30px auto;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container" style="margin-top: 25px; min-height: 90vh;">
+        <!-- Header Section -->
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px; border-bottom: 1px solid rgba(0,0,0,0.06); padding-bottom: 20px; flex-wrap: wrap; gap: 15px;">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <img src="https://github.com/otaviogabrielbh-cloud/projeto-gas/raw/refs/heads/main/logo.png" alt="Logo" style="height: 55px; border-radius: 12px;">
+                <div>
+                    <h2 style="text-align: left; margin: 0; font-size: 22px; color: #2d3436;">Gestão de Clientes</h2>
+                    <p style="margin: 0; font-size: 13px; color: #0e806c; font-weight: 600;" id="customerCountDisplay">
+                        Conectando à VPS...
+                    </p>
+                </div>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-limpar" style="width: auto; padding: 10px 20px;" onclick="window.location.href='index.html'">🏠 Início</button>
+                <button class="btn-gerar" style="width: auto; padding: 10px 20px;" onclick="openNewCustomer()">✨ Novo Cliente</button>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="tabs-container">
+            <button class="tab-btn active" id="tabBtn-lista" onclick="setTab('lista')">
+                <span>📋</span> Lista de Clientes
+            </button>
+            <button class="tab-btn" id="tabBtn-ficha" onclick="setTab('ficha')">
+                <span>👤</span> Ficha Cadastral
+            </button>
+            <button class="tab-btn" id="tabBtn-historico" onclick="setTab('historico')">
+                <span>⏳</span> Histórico de Pedidos
+            </button>
+        </div>
+
+        <!-- TAB: LISTA -->
+        <div id="tab-lista">
+            <div class="search-box-wrap">
+                <input type="text" id="search" class="search-input-field" placeholder="🔍 Pesquisar por nome, telefone ou endereço..." oninput="filterCustomers()">
+                <div class="chips-container">
+                    <button class="filter-chip active" onclick="setFilter(this,'todos')">Todos</button>
+                    <button class="filter-chip" onclick="setFilter(this,'ativo')">Ativos</button>
+                    <button class="filter-chip" onclick="setFilter(this,'inativo')">Inativos</button>
+                    <button class="filter-chip" onclick="setFilter(this,'blacklist')">🚫 Blacklist</button>
+                </div>
+            </div>
+
+            <div class="customer-grid" id="customer-list">
+                <div style="grid-column: 1/-1; text-align: center; padding: 40px;">
+                    <div class="loading-spinner"></div>
+                    <p style="color: #636e72; font-size: 14px;">Carregando clientes da VPS...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: FICHA -->
+        <div id="tab-ficha" style="display:none">
+            <div id="ficha-empty" class="empty-state" style="background: rgba(255,255,255,0.6); border-radius: 20px; padding: 50px; text-align: center;">
+                <div style="font-size: 44px; margin-bottom: 15px;">👤</div>
+                <h3 style="margin-bottom: 8px;">Nenhum cliente selecionado</h3>
+                <p style="color: #636e72; margin-bottom: 20px;">Escolha um cliente na lista ou inicie um novo cadastro.</p>
+                <button class="btn-gerar" style="width: auto; padding: 10px 30px; display: inline-block;" onclick="setTab('lista')">Ver Lista de Clientes</button>
+            </div>
+
+            <div id="ficha-form" style="display:none">
+                <div class="card-faturamento" style="margin-bottom: 25px; padding: 20px 25px; border-radius: 16px; background: white; box-shadow: 0 4px 15px rgba(0,0,0,0.04);">
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <h3 id="ficha-title" style="text-align: left; margin: 0; font-size: 20px;">Editar Cliente</h3>
+                        <div id="ficha-badge"></div>
+                    </div>
+                </div>
+
+                <div class="grid-responsivo" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 25px;">
+                    <!-- Coluna 1: Dados Pessoais -->
+                    <div>
+                        <div class="form-section-header">👤 Informações Pessoais</div>
+                        <div style="margin-bottom: 15px;">
+                            <label style="font-size: 13px; font-weight: 600; color: #2d3436; margin-bottom: 6px; display: block;">Nome Completo *</label>
+                            <input type="text" id="f-nome" class="search-input-field" style="margin-bottom: 0;" placeholder="Nome do cliente">
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <label style="font-size: 13px; font-weight: 600; color: #2d3436; margin-bottom: 6px; display: block;">WhatsApp / Telefone *</label>
+                            <input type="text" id="f-tel" class="search-input-field" style="margin-bottom: 0;" placeholder="(00) 00000-0000">
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                            <div>
+                                <label style="font-size: 13px; font-weight: 600; color: #2d3436; margin-bottom: 6px; display: block;">CPF / CNPJ</label>
+                                <input type="text" id="f-doc" class="search-input-field" style="margin-bottom: 0;" placeholder="000.000.000-00">
+                            </div>
+                            <div>
+                                <label style="font-size: 13px; font-weight: 600; color: #2d3436; margin-bottom: 6px; display: block;">Data de Nascimento</label>
+                                <input type="date" id="f-nasc" class="search-input-field" style="margin-bottom: 0;">
+                            </div>
+                        </div>
+                        <div>
+                            <label style="font-size: 13px; font-weight: 600; color: #2d3436; margin-bottom: 6px; display: block;">E-mail</label>
+                            <input type="email" id="f-email" class="search-input-field" style="margin-bottom: 0;" placeholder="email@exemplo.com">
+                        </div>
+                    </div>
+
+                    <!-- Coluna 2: Endereço -->
+                    <div>
+                        <div class="form-section-header">📍 Endereço Principal</div>
+                        <div style="margin-bottom: 15px;">
+                            <label style="font-size: 13px; font-weight: 600; color: #2d3436; margin-bottom: 6px; display: block;">Rua / Logradouro *</label>
+                            <input type="text" id="f-rua" class="search-input-field" style="margin-bottom: 0;" placeholder="Nome da rua">
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 15px; margin-bottom: 15px;">
+                            <div>
+                                <label style="font-size: 13px; font-weight: 600; color: #2d3436; margin-bottom: 6px; display: block;">Número</label>
+                                <input type="text" id="f-num" class="search-input-field" style="margin-bottom: 0;" placeholder="123">
+                            </div>
+                            <div>
+                                <label style="font-size: 13px; font-weight: 600; color: #2d3436; margin-bottom: 6px; display: block;">Complemento</label>
+                                <input type="text" id="f-comp" class="search-input-field" style="margin-bottom: 0;" placeholder="Apto, Casa, etc">
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 15px; margin-bottom: 15px;">
+                            <div>
+                                <label style="font-size: 13px; font-weight: 600; color: #2d3436; margin-bottom: 6px; display: block;">Bairro</label>
+                                <input type="text" id="f-bairro" class="search-input-field" style="margin-bottom: 0;" placeholder="Bairro">
+                            </div>
+                            <div>
+                                <label style="font-size: 13px; font-weight: 600; color: #2d3436; margin-bottom: 6px; display: block;">CEP</label>
+                                <input type="text" id="f-cep" class="search-input-field" style="margin-bottom: 0;" placeholder="00000-000">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section-header">⚙️ Preferências e Histórico</div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                    <div>
+                        <label style="font-size: 13px; font-weight: 600; color: #2d3436; margin-bottom: 6px; display: block;">Produto Principal</label>
+                        <select id="f-produto" class="search-input-field" style="margin-bottom: 0;">
+                            <option value="Gás 13kg">Gás 13kg - SUPERGASBRAS</option>
+                            <option value="Gás 45kg">Gás 45kg - SUPERGASBRAS</option>
+                            <option value="Água Mineral-20 litros">Água Mineral 20L</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size: 13px; font-weight: 600; color: #2d3436; margin-bottom: 6px; display: block;">Canal de Venda</label>
+                        <select id="f-canal" class="search-input-field" style="margin-bottom: 0;">
+                            <option value="WhatsApp">WhatsApp</option>
+                            <option value="Disk Entrega">Disk Entrega</option>
+                            <option value="Aplicativo">Aplicativo</option>
+                            <option value="Site">Site</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size: 13px; font-weight: 600; color: #2d3436; margin-bottom: 6px; display: block;">Duração Média (Dias)</label>
+                        <input type="number" id="f-duracao" class="search-input-field" style="margin-bottom: 0;" value="30">
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <label style="font-size: 13px; font-weight: 600; color: #2d3436; margin-bottom: 6px; display: block;">Observações / Ponto de Referência</label>
+                    <textarea id="f-obs" class="search-input-field" style="min-height: 80px; resize: vertical;" placeholder="Ex: Portão preto, interfone 102, troco para 100..."></textarea>
+                </div>
+
+                <div style="display: flex; gap: 25px; margin-bottom: 25px; background: rgba(255,255,255,0.7); padding: 16px 20px; border-radius: 14px; flex-wrap: wrap;">
+                    <label class="checkbox-wrapper">
+                        <input type="checkbox" id="f-ativo" checked>
+                        <span>Cliente Ativo</span>
+                    </label>
+                    <label class="checkbox-wrapper">
+                        <input type="checkbox" id="f-fidelidade">
+                        <span>⭐ Programa Fidelidade</span>
+                    </label>
+                    <label class="checkbox-wrapper blacklist-wrapper">
+                        <input type="checkbox" id="f-blacklist">
+                        <span>🚫 Blacklist (Bloqueado)</span>
+                    </label>
+                </div>
+
+                <div style="display: flex; gap: 15px; justify-content: flex-end;">
+                    <button class="btn-limpar" style="width: auto; padding: 12px 25px;" onclick="setTab('lista')">Cancelar</button>
+                    <button class="btn-gerar" style="width: auto; padding: 12px 30px;" onclick="saveCustomer()">💾 Salvar na VPS</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: HISTORICO -->
+        <div id="tab-historico" style="display:none">
+            <div id="hist-empty" class="empty-state" style="background: rgba(255,255,255,0.6); border-radius: 20px; padding: 50px; text-align: center;">
+                <div style="font-size: 44px; margin-bottom: 15px;">⏳</div>
+                <h3 style="margin-bottom: 8px;">Selecione um cliente para ver o histórico</h3>
+                <p style="color: #636e72;">Clique em um cliente na lista para carregar seu histórico completo de compras.</p>
+            </div>
+
+            <div id="hist-content" style="display:none">
+                <div class="card-faturamento" style="margin-bottom: 25px; padding: 20px 25px; border-radius: 16px; background: white; box-shadow: 0 4px 15px rgba(0,0,0,0.04);">
+                    <h3 id="hist-title" style="text-align: left; margin: 0; font-size: 20px;">Histórico de Compras</h3>
+                </div>
+
+                <div class="stats-grid-premium">
+                    <div class="stat-card-premium">
+                        <div class="stat-val-premium" id="h-total">0</div>
+                        <div class="stat-lbl-premium">Pedidos Realizados</div>
+                    </div>
+                    <div class="stat-card-premium">
+                        <div class="stat-val-premium" id="h-valor">R$ 0,00</div>
+                        <div class="stat-lbl-premium">Valor Acumulado</div>
+                    </div>
+                    <div class="stat-card-premium">
+                        <div class="stat-val-premium" id="h-dias">30</div>
+                        <div class="stat-lbl-premium">Duração Média (Dias)</div>
+                    </div>
+                </div>
+
+                <div class="table-wrap" style="background: white; border-radius: 16px; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.04); overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="border-bottom: 2px solid #f1f2f6; text-align: left; font-size: 13px; color: #636e72;">
+                                <th style="padding: 12px 10px;">Data</th>
+                                <th style="padding: 12px 10px;">Produto</th>
+                                <th style="padding: 12px 10px;">Valor</th>
+                                <th style="padding: 12px 10px;">Pagamento</th>
+                            </tr>
+                        </thead>
+                        <tbody id="hist-orders">
+                            <!-- Preenchido via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast-customer">
+        <span id="toast-msg">Mensagem</span>
+    </div>
+
+    <!-- Logica Principal do Frontend -->
+    <script>
+        let allCustomers = [];
+        let allOrders = [];
+        let currentFilter = 'todos';
+        let selectedCustomer = null;
+        const PAGE_SIZE = 60;
+        let displayedCount = PAGE_SIZE;
+
+        const countDisplay = document.getElementById('customerCountDisplay');
+        const listContainer = document.getElementById('customer-list');
+        const searchInput = document.getElementById('search');
+
+        function getSocket() {
+            return window.vpsSocket || (typeof io !== 'undefined' ? io('http://179.236.224.192:3000') : null);
+        }
+
+        function loadDataFromVPS() {
+            const socket = getSocket();
+            if (!socket) {
+                if (countDisplay) countDisplay.textContent = 'Erro ao conectar à VPS';
+                return;
+            }
+
+            if (countDisplay) countDisplay.textContent = 'Carregando clientes da VPS...';
+
+            socket.emit('get', { path: 'clientes_resumo' }, (dataResumo) => {
+                socket.emit('get', { path: 'clientes' }, (dataClientes) => {
+                    socket.emit('get', { path: 'pedidos_realtime' }, (dataPedidos) => {
+                        processCustomerData(dataResumo || {}, dataClientes || {}, dataPedidos || {});
+                    });
+                });
+            });
+        }
+
+        function initApp() {
+            const socket = getSocket();
+            if (!socket) return;
+
+            loadDataFromVPS();
+
+            socket.on('connect', () => {
+                loadDataFromVPS();
+            });
+
+            socket.on('changed_clientes_resumo', () => {
+                socket.emit('get', { path: 'clientes_resumo' }, (resumo) => {
+                    socket.emit('get', { path: 'clientes' }, (detalhes) => {
+                        processCustomerData(resumo || {}, detalhes || {}, null, true);
+                    });
+                });
+            });
+
+            socket.on('changed_pedidos_realtime', () => {
+                socket.emit('get', { path: 'pedidos_realtime' }, (pedidos) => {
+                    if (pedidos) allOrders = Object.keys(pedidos).map(k => ({ id: k, ...pedidos[k] }));
+                    if (selectedCustomer) renderHistory(selectedCustomer);
+                });
+            });
+        }
+
+        function processCustomerData(resumo, clientes, pedidos, keepSelected = false) {
+            if (pedidos) {
+                allOrders = Object.keys(pedidos).map(k => ({ id: k, ...pedidos[k] }));
+            }
+
+            const map = new Map();
+
+            // 1. Processar clientes_resumo (3500+ registros)
+            Object.keys(resumo || {}).forEach(telLimpo => {
+                const item = resumo[telLimpo];
+                map.set(telLimpo, {
+                    telefoneLimpo: telLimpo,
+                    nome: item.nome || 'Cliente Sem Nome',
+                    telefone: item.telefone || formatTel(telLimpo),
+                    endereco: item.endereco || '',
+                    totalPedidos: parseInt(item.totalPedidos) || 0,
+                    ultimaCompraData: item.ultimaCompraData || '',
+                    ultimaCompraValor: item.ultimaCompraValor || '',
+                    ultimaCompraProduto: item.ultimaCompraProduto || '',
+                    isBlacklist: !!item.isBlacklist,
+                    ativo: item.ativo !== false
+                });
+            });
+
+            // 2. Mesclar detalhes de clientes
+            Object.keys(clientes || {}).forEach(k => {
+                const c = clientes[k];
+                const telLimpo = (c.tel || c.telefone || String(k)).replace(/\D/g, '');
+                if (!telLimpo) return;
+
+                const existing = map.get(telLimpo) || {
+                    telefoneLimpo: telLimpo,
+                    totalPedidos: 0,
+                    ultimaCompraData: '',
+                    ultimaCompraValor: '',
+                    ultimaCompraProduto: ''
+                };
+
+                map.set(telLimpo, {
+                    ...existing,
+                    id: k,
+                    nome: c.nome || existing.nome || 'Cliente Sem Nome',
+                    telefone: c.tel || c.telefone || existing.telefone || formatTel(telLimpo),
+                    doc: c.doc || '',
+                    nasc: c.nasc || '',
+                    email: c.email || '',
+                    rua: c.rua || '',
+                    num: c.num || '',
+                    comp: c.comp || '',
+                    bairro: c.bairro || '',
+                    cep: c.cep || '',
+                    produto: c.produto || 'Gás 13kg',
+                    canal: c.canal || 'WhatsApp',
+                    duracao: c.duracao || 30,
+                    obs: c.obs || '',
+                    ativo: c.ativo !== false,
+                    fidelidade: !!c.fidelidade,
+                    isBlacklist: !!c.blacklist || !!existing.isBlacklist
+                });
+            });
+
+            allCustomers = Array.from(map.values()).sort((a, b) => (b.totalPedidos || 0) - (a.totalPedidos || 0));
+
+            if (countDisplay) {
+                countDisplay.textContent = `🟢 ${allCustomers.length.toLocaleString('pt-BR')} clientes conectados na VPS`;
+            }
+
+            filterCustomers();
+
+            if (selectedCustomer && keepSelected) {
+                const updated = allCustomers.find(c => c.telefoneLimpo === selectedCustomer.telefoneLimpo);
+                if (updated) selectCustomer(updated.telefoneLimpo, false);
+            }
+        }
+
+        function filterCustomers() {
+            const query = (searchInput ? searchInput.value : '').toLowerCase().trim();
+            const qClean = query.replace(/\D/g, '');
+
+            let filtered = allCustomers;
+            if (currentFilter === 'ativo') filtered = filtered.filter(c => c.ativo && !c.isBlacklist);
+            else if (currentFilter === 'inativo') filtered = filtered.filter(c => !c.ativo);
+            else if (currentFilter === 'blacklist') filtered = filtered.filter(c => c.isBlacklist);
+
+            if (query) {
+                filtered = filtered.filter(c => {
+                    const matchNome = (c.nome || '').toLowerCase().includes(query);
+                    const matchEnd = (c.endereco || `${c.rua || ''} ${c.bairro || ''}`).toLowerCase().includes(query);
+                    const matchTel = qClean ? c.telefoneLimpo.includes(qClean) : false;
+                    return matchNome || matchEnd || matchTel;
+                });
+            }
+
+            renderCustomerGrid(filtered.slice(0, displayedCount), filtered.length);
+        }
+
+        function renderCustomerGrid(list, totalCount) {
+            if (!listContainer) return;
+            listContainer.innerHTML = '';
+
+            if (list.length === 0) {
+                listContainer.innerHTML = `
+                    <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #636e72;">
+                        <div style="font-size: 32px; margin-bottom: 10px;">🔍</div>
+                        <p>Nenhum cliente encontrado com os filtros aplicados.</p>
+                    </div>`;
+                return;
+            }
+
+            list.forEach(c => {
+                const card = document.createElement('div');
+                card.className = `customer-card-premium ${c.isBlacklist ? 'blacklisted' : ''} ${selectedCustomer?.telefoneLimpo === c.telefoneLimpo ? 'selected' : ''}`;
+                card.onclick = () => selectCustomer(c.telefoneLimpo);
+
+                const initials = (c.nome || 'C').substring(0, 2).toUpperCase();
+                const endCompleto = c.endereco || `${c.rua || ''} ${c.num ? ', ' + c.num : ''} ${c.bairro ? '- ' + c.bairro : ''}`.trim() || 'Endereço não informado';
+
+                let badgeHtml = '<span class="status-badge badge-ativo">ATIVO</span>';
+                if (c.isBlacklist) {
+                    badgeHtml = '<span class="status-badge badge-blacklist">BLACKLIST</span>';
+                } else if (!c.ativo) {
+                    badgeHtml = '<span class="status-badge badge-inativo">INATIVO</span>';
+                }
+
+                card.innerHTML = `
+                    <div>
+                        <div style="display: flex; align-items: flex-start; justify-content: space-between;">
+                            <div class="avatar-premium">${initials}</div>
+                            ${badgeHtml}
+                        </div>
+                        <div class="customer-name-premium" title="${c.nome}">${c.nome}</div>
+                        <div class="customer-meta-premium">📞 ${c.telefone || formatTel(c.telefoneLimpo)}</div>
+                        <div class="customer-meta-premium" title="${endCompleto}">📍 ${endCompleto}</div>
+                    </div>
+                    <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid rgba(0,0,0,0.06); display: flex; justify-content: space-between; font-size: 12px; color: #636e72;">
+                        <span>🛒 Pedidos: <b>${c.totalPedidos || 0}</b></span>
+                        <span>${c.ultimaCompraData ? 'Último: ' + c.ultimaCompraData.split(',')[0] : ''}</span>
+                    </div>
+                `;
+                listContainer.appendChild(card);
+            });
+
+            if (totalCount > displayedCount) {
+                const btnMore = document.createElement('button');
+                btnMore.className = 'btn-limpar';
+                btnMore.style.gridColumn = '1/-1';
+                btnMore.style.margin = '20px auto';
+                btnMore.style.width = 'auto';
+                btnMore.style.padding = '12px 30px';
+                btnMore.textContent = `Carregar Mais (${displayedCount} de ${totalCount})`;
+                btnMore.onclick = () => {
+                    displayedCount += PAGE_SIZE;
+                    filterCustomers();
+                };
+                listContainer.appendChild(btnMore);
+            }
+        }
+
+        function selectCustomer(telLimpo, autoSwitchTab = true) {
+            selectedCustomer = allCustomers.find(c => c.telefoneLimpo === telLimpo);
+            if (!selectedCustomer) return;
+
+            document.getElementById('ficha-empty').style.display = 'none';
+            document.getElementById('ficha-form').style.display = 'block';
+            document.getElementById('ficha-title').textContent = selectedCustomer.nome || 'Editar Cliente';
+
+            const badge = document.getElementById('ficha-badge');
+            if (badge) {
+                badge.innerHTML = selectedCustomer.isBlacklist ?
+                    '<span class="status-badge badge-blacklist">BLACKLIST</span>' :
+                    (selectedCustomer.ativo ? '<span class="status-badge badge-ativo">ATIVO</span>' : '<span class="status-badge badge-inativo">INATIVO</span>');
+            }
+
+            document.getElementById('f-nome').value = selectedCustomer.nome || '';
+            document.getElementById('f-tel').value = selectedCustomer.telefone || formatTel(selectedCustomer.telefoneLimpo);
+            document.getElementById('f-doc').value = selectedCustomer.doc || '';
+            document.getElementById('f-nasc').value = selectedCustomer.nasc || '';
+            document.getElementById('f-email').value = selectedCustomer.email || '';
+            document.getElementById('f-rua').value = selectedCustomer.rua || '';
+            document.getElementById('f-num').value = selectedCustomer.num || '';
+            document.getElementById('f-comp').value = selectedCustomer.comp || '';
+            document.getElementById('f-bairro').value = selectedCustomer.bairro || '';
+            document.getElementById('f-cep').value = selectedCustomer.cep || '';
+            document.getElementById('f-produto').value = selectedCustomer.produto || 'Gás 13kg';
+            document.getElementById('f-canal').value = selectedCustomer.canal || 'WhatsApp';
+            document.getElementById('f-duracao').value = selectedCustomer.duracao || 30;
+            document.getElementById('f-obs').value = selectedCustomer.obs || '';
+            document.getElementById('f-ativo').checked = selectedCustomer.ativo !== false;
+            document.getElementById('f-fidelidade').checked = !!selectedCustomer.fidelidade;
+            document.getElementById('f-blacklist').checked = !!selectedCustomer.isBlacklist;
+
+            renderHistory(selectedCustomer);
+
+            if (autoSwitchTab) {
+                setTab('ficha');
+            }
+        }
+
+        function openNewCustomer() {
+            selectedCustomer = null;
+            document.getElementById('ficha-empty').style.display = 'none';
+            document.getElementById('ficha-form').style.display = 'block';
+            document.getElementById('ficha-title').textContent = 'Novo Cliente';
+            document.getElementById('ficha-badge').innerHTML = '';
+
+            ['f-nome', 'f-tel', 'f-doc', 'f-nasc', 'f-email', 'f-rua', 'f-num', 'f-comp', 'f-bairro', 'f-cep', 'f-obs'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+
+            document.getElementById('f-produto').value = 'Gás 13kg';
+            document.getElementById('f-canal').value = 'WhatsApp';
+            document.getElementById('f-duracao').value = '30';
+            document.getElementById('f-ativo').checked = true;
+            document.getElementById('f-fidelidade').checked = false;
+            document.getElementById('f-blacklist').checked = false;
+
+            setTab('ficha');
+        }
+
+        function saveCustomer() {
+            const nome = document.getElementById('f-nome').value.trim();
+            const tel = document.getElementById('f-tel').value.trim();
+            const telLimpo = tel.replace(/\D/g, '');
+
+            if (!nome || !telLimpo) {
+                showToast('Preencha o Nome e o Telefone do cliente!');
+                return;
+            }
+
+            const payload = {
+                nome,
+                tel,
+                telefone: tel,
+                doc: document.getElementById('f-doc').value.trim(),
+                nasc: document.getElementById('f-nasc').value,
+                email: document.getElementById('f-email').value.trim(),
+                rua: document.getElementById('f-rua').value.trim(),
+                num: document.getElementById('f-num').value.trim(),
+                comp: document.getElementById('f-comp').value.trim(),
+                bairro: document.getElementById('f-bairro').value.trim(),
+                cep: document.getElementById('f-cep').value.trim(),
+                produto: document.getElementById('f-produto').value,
+                canal: document.getElementById('f-canal').value,
+                duracao: parseInt(document.getElementById('f-duracao').value) || 30,
+                obs: document.getElementById('f-obs').value.trim(),
+                ativo: document.getElementById('f-ativo').checked,
+                fidelidade: document.getElementById('f-fidelidade').checked,
+                blacklist: document.getElementById('f-blacklist').checked
+            };
+
+            const resumoPayload = {
+                nome,
+                telefone: tel,
+                telefoneLimpo: telLimpo,
+                endereco: `${payload.rua} ${payload.num ? ', ' + payload.num : ''} ${payload.bairro ? '- ' + payload.bairro : ''}`.trim(),
+                isBlacklist: payload.blacklist,
+                ativo: payload.ativo,
+                totalPedidos: selectedCustomer?.totalPedidos || 0,
+                ultimaCompraData: selectedCustomer?.ultimaCompraData || '',
+                ultimaCompraValor: selectedCustomer?.ultimaCompraValor || '',
+                ultimaCompraProduto: payload.produto
+            };
+
+            const socket = getSocket();
+            const key = selectedCustomer?.id || telLimpo;
+
+            socket.emit('set', { path: `clientes/${key}`, payload }, () => {
+                socket.emit('set', { path: `clientes_resumo/${telLimpo}`, payload: resumoPayload }, () => {
+                    showToast('Cliente salvo com sucesso na VPS! ✅');
+                    setTimeout(() => setTab('lista'), 800);
+                });
+            });
+        }
+
+        function renderHistory(customer) {
+            const hEmpty = document.getElementById('hist-empty');
+            const hContent = document.getElementById('hist-content');
+            const hOrders = document.getElementById('hist-orders');
+
+            if (!customer) {
+                if (hEmpty) hEmpty.style.display = 'block';
+                if (hContent) hContent.style.display = 'none';
+                return;
+            }
+
+            if (hEmpty) hEmpty.style.display = 'none';
+            if (hContent) hContent.style.display = 'block';
+
+            document.getElementById('hist-title').textContent = `Histórico de Compras - ${customer.nome}`;
+
+            const telLimpo = customer.telefoneLimpo;
+            const orders = allOrders.filter(p => {
+                const pTel = (p.telefone || '').replace(/\D/g, '');
+                return pTel && pTel === telLimpo;
+            });
+
+            document.getElementById('h-total').textContent = orders.length;
+
+            let totalValor = 0;
+            orders.forEach(o => {
+                const v = parseFloat(String(o.valor || '0').replace('R$', '').replace('.', '').replace(',', '.').trim()) || 0;
+                totalValor += v;
+            });
+
+            document.getElementById('h-valor').textContent = totalValor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            document.getElementById('h-dias').textContent = customer.duracao || 30;
+
+            if (hOrders) {
+                hOrders.innerHTML = '';
+                if (orders.length === 0) {
+                    hOrders.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #636e72; padding: 25px;">Nenhum pedido registrado para este cliente.</td></tr>';
+                } else {
+                    orders.forEach(o => {
+                        const tr = document.createElement('tr');
+                        tr.style.borderBottom = '1px solid #f1f2f6';
+                        tr.innerHTML = `
+                            <td style="padding: 12px 10px; font-size: 13px;">${o.data || '-'}</td>
+                            <td style="padding: 12px 10px; font-size: 13px;"><b>${o.produto || 'Gás 13kg'}</b></td>
+                            <td style="padding: 12px 10px; font-size: 13px;">R$ ${o.valor || '0,00'}</td>
+                            <td style="padding: 12px 10px; font-size: 13px;"><span class="status-badge badge-ativo">${o.pagamento || 'DINHEIRO'}</span></td>
+                        `;
+                        hOrders.appendChild(tr);
+                    });
+                }
+            }
+        }
+
+        function setTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            const btn = document.getElementById(`tabBtn-${tabName}`);
+            if (btn) btn.classList.add('active');
+
+            ['tab-lista', 'tab-ficha', 'tab-historico'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = (id === `tab-${tabName}`) ? 'block' : 'none';
+            });
+        }
+
+        function setFilter(btn, filterName) {
+            currentFilter = filterName;
+            document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+            filterCustomers();
+        }
+
+        function formatTel(clean) {
+            if (!clean) return '';
+            if (clean.length === 11) return `(${clean.slice(0, 2)}) ${clean.slice(2, 7)}-${clean.slice(7)}`;
+            if (clean.length === 10) return `(${clean.slice(0, 2)}) ${clean.slice(2, 6)}-${clean.slice(6)}`;
+            return clean;
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toast-msg');
+            if (!toast || !toastMsg) return;
+
+            toastMsg.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // Inicialização garantida
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initApp);
+        } else {
+            initApp();
+        }
+    </script>
+</body>
+</html>

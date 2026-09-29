@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Migrador de Dados</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f0f2f5; text-align: center; }
+        .box { background: white; padding: 30px; border-radius: 10px; max-width: 600px; margin: 0 auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        button { background: #27ae60; color: white; border: none; padding: 15px 30px; font-size: 18px; border-radius: 5px; cursor: pointer; }
+        button:disabled { background: #95a5a6; cursor: not-allowed; }
+        #log { margin-top: 20px; text-align: left; background: #333; color: #fff; padding: 10px; border-radius: 5px; height: 200px; overflow-y: auto; }
+    </style>
+    <!-- VPS Socket.IO & Adapter (Primeiros Scripts) -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="js/vps-adapter.js"></script>
+</head>
+<body>
+    <div class="box">
+        <h2>Migrador de Dados para o Novo Servidor VPS</h2>
+        <p>Este painel vai puxar todas as informaes do Google Firebase e enviar para o seu servidor VPS novo na Hostinger.</p>
+        <button id="btnMigrar">INICIAR MIGRAO</button>
+        <div id="log">Pronto para iniciar...</div>
+    </div>
+
+    </body>
+</html>

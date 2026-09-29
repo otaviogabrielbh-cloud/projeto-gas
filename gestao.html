@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão Analítica - Canoas Gás</title>
+    <link rel="icon" type="image/x-icon"
+        href="https://github.com/otaviogabrielbh-cloud/projeto-gas/raw/refs/heads/main/LOGO.ico">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Poppins:wght@300;400;600&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        /* MESH GRADIENT BACKGROUND ADJUSTED FOR GREEN THEME */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 10% 20%, rgba(46, 204, 113, 0.08) 0%, transparent 20%),
+                radial-gradient(circle at 90% 80%, rgba(0, 184, 148, 0.08) 0%, transparent 20%),
+                radial-gradient(circle at 50% 50%, rgba(15, 23, 42, 1) 0%, transparent 50%);
+            z-index: -2;
+            animation: meshRotate 30s linear infinite;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 800;
+            font-family: 'Outfit';
+            color: #2ecc71;
+            text-shadow: 0 0 15px rgba(46, 204, 113, 0.3);
+        }
+
+        .header-title h1 {
+            background: linear-gradient(135deg, #2ecc71 0%, #00b894 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .gestao-container {
+            max-width: 1400px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+
+        .gestao-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            background: rgba(30, 41, 59, 0.7);
+            padding: 20px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .header-title h1 {
+            margin: 0;
+            font-family: 'Outfit', sans-serif;
+            font-size: 24px;
+            background: linear-gradient(135deg, #2ecc71 0%, #55efc4 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .grid-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: rgba(30, 41, 59, 0.7);
+            padding: 24px;
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+            transition: transform 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: #94a3b8;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 800;
+            font-family: 'Outfit';
+            color: #2ecc71;
+        }
+
+        .stat-sub {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 5px;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 20px;
+        }
+
+        .map-section {
+            background: rgba(30, 41, 59, 0.7);
+            border-radius: 24px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            height: 600px;
+            position: relative;
+        }
+
+        #mapGestao {
+            height: 100%;
+            border-radius: 16px;
+        }
+
+        .top-streets-section {
+            background: rgba(30, 41, 59, 0.7);
+            border-radius: 24px;
+            padding: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .top-street-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .street-name {
+            font-weight: 600;
+            color: #e2e8f0;
+            font-size: 14px;
+        }
+
+        .street-count {
+            background: #2ecc71;
+            color: #0f172a;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .btn-voltar {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 12px;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        .btn-voltar:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0f172a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+    </style>
+    <!-- VPS Socket.IO & Adapter (Primeiros Scripts) -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="js/vps-adapter.js"></script>
+</head>
+
+<body>
+    <div id="loading" class="loading-overlay">
+        <div class="stat-value">CARREGANDO DADOS...</div>
+    </div>
+
+    <div class="gestao-container">
+        <header class="gestao-header">
+            <div class="header-title">
+                <h1>📊 GESTÃO ANALÍTICA PRO MAX</h1>
+                <p style="font-size: 12px; color: #94a3b8; margin: 5px 0 0 0;">Análise em tempo real de performance e
+                    mercado</p>
+            </div>
+            <a href="index.html" class="btn-voltar">⬅ VOLTAR PARA PEDIDOS</a>
+        </header>
+
+        <!-- FILTERS BAR -->
+        <section class="gestao-header"
+            style="margin-top: -15px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; align-items: flex-end;">
+            <div>
+                <label style="color: #94a3b8; font-size: 11px; text-transform: uppercase;">📅 Data Início</label>
+                <input type="date" id="filterDataInicio"
+                    style="background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 8px; padding: 8px; width: 100%;">
+            </div>
+            <div>
+                <label style="color: #94a3b8; font-size: 11px; text-transform: uppercase;">📅 Data Fim</label>
+                <input type="date" id="filterDataFim"
+                    style="background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 8px; padding: 8px; width: 100%;">
+            </div>
+            <div>
+                <label style="color: #94a3b8; font-size: 11px; text-transform: uppercase;">🛵 Entregador</label>
+                <select id="filterEntregador"
+                    style="background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 8px; padding: 8px; width: 100%;">
+                    <option value="todos">Todos Entregadores</option>
+                </select>
+            </div>
+            <div style="display: flex; gap: 10px; height: 40px; align-items: stretch;">
+                <button id="btnLimparFiltros"
+                    style="background: rgba(255,255,255,0.05); color: #94a3b8; font-size: 11px; height: 100%; min-width: unset; margin: 0; padding: 0 15px; border-radius: 8px;">Limpar
+                    Filtros</button>
+                <button id="btnExportarExcel"
+                    style="background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%); color: white; font-size: 11px; height: 100%; min-width: unset; margin: 0; padding: 0 15px; border-radius: 8px; border: none; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 5px;">📤
+                    EXPORTAR EXCEL</button>
+            </div>
+        </section>
+
+        <section class="grid-stats">
+            <div class="stat-card">
+                <div class="stat-label">Tempo Médio de Espera</div>
+                <div id="avgEspera" class="stat-value">-- min</div>
+                <div class="stat-sub">Criação → Entrega</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Tempo Médio de Rota</div>
+                <div id="avgRota" class="stat-value">-- min</div>
+                <div class="stat-sub">Início → Entrega</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Total Pedidos</div>
+                <div id="totalHoje" class="stat-value" style="color: #f1c40f">0</div>
+                <div class="stat-sub" id="picoHorario">Pico: --h</div>
+            </div>
+        </section>
+
+        <div class="dashboard-grid">
+            <div class="map-section">
+                <div class="stat-label" style="margin-bottom: 10px;">📍 Mapa de Oportunidades (Pontos)</div>
+                <div id="mapGestao"></div>
+            </div>
+            <div class="top-streets-section">
+                <div class="stat-label" style="margin-bottom: 20px;">🏆 Top 10 Ruas / Bairros</div>
+                <div id="topStreetsList">
+                    <!-- Preenchido via JS -->
+                </div>
+            </div>
+        </div>
+
+        <section class="grid-stats"
+            style="margin-top: 30px; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));">
+            <div class="stat-card">
+                <div class="stat-label">Performance por Entregador</div>
+                <div style="height: 300px;"><canvas id="chartEntregadorTime"></canvas></div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">🕒 Volume de Pedidos por Horário</div>
+                <div style="height: 300px;"><canvas id="chartPeakHours"></canvas></div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://leaflet.github.io/Leaflet.heat/dist/leaflet-heat.js"></script>
+
+    
+</body>
+
+</html>
