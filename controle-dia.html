@@ -3204,24 +3204,58 @@
 
         // ========== HELPERS ==========
         const R$ = v => 'R$ ' + (v||0).toFixed(2).replace('.', ',');
-        const N = v => parseFloat(v) || 0;
+        const N = v => {
+            if (typeof v === 'number') return isNaN(v) ? 0 : v;
+            if (!v) return 0;
+            const s = String(v).replace('R$', '').trim().replace(/\./g, '').replace(',', '.');
+            return parseFloat(s) || 0;
+        };
 
         function dataISO(str) {
             if (!str) return null;
-            if (str.includes('-') && str.split('-')[0].length === 4) return str.split('T')[0].trim();
-            if (str.includes('/')) { const p = str.split('/'); return `${p[2].length===2?'20'+p[2]:p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`; }
-            if (str.includes('-')) { const p = str.split('-'); if(p[2]&&p[2].length===4) return `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`; }
+            str = String(str).trim();
+            if (str.includes('/')) {
+                const partes = str.match(/(\d+)/g);
+                if (partes && partes.length >= 3) {
+                    const d = partes[0].padStart(2, '0');
+                    const m = partes[1].padStart(2, '0');
+                    const y = partes[2].length === 2 ? '20' + partes[2] : partes[2];
+                    return `${y}-${m}-${d}`;
+                }
+            }
+            if (str.includes('-')) {
+                const partes = str.match(/(\d+)/g);
+                if (partes && partes.length >= 3) {
+                    if (partes[0].length === 4) {
+                        const y = partes[0];
+                        const m = partes[1].padStart(2, '0');
+                        const d = partes[2].padStart(2, '0');
+                        return `${y}-${m}-${d}`;
+                    } else if (partes[2].length === 4) {
+                        const d = partes[0].padStart(2, '0');
+                        const m = partes[1].padStart(2, '0');
+                        const y = partes[2];
+                        return `${y}-${m}-${d}`;
+                    }
+                }
+            }
             return null;
         }
-        function dataBR(iso) { if(!iso)return '--/--/----'; const [y,m,d]=iso.split('-'); return `${d}/${m}/${y}`; }
+
+        function dataBR(iso) { 
+            if(!iso) return '--/--/----'; 
+            const parts = iso.split('-'); 
+            if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+            return iso; 
+        }
         function getDataSelecionada() { return document.getElementById('filtroData').value; }
 
         function tipoProduto(prod) {
             const p = (prod||'').toLowerCase();
             if (p.includes('45') || p.includes('p45')) return 'P45';
-            if (p.includes('vasilhame') && p.includes('gás') || p.includes('vasilhame') && p.includes('gas') || p.includes('completo') && (p.includes('gás')||p.includes('gas')||p.includes('botij'))) return 'GAS_COMPL';
+            if ((p.includes('vasilhame') && (p.includes('gás') || p.includes('gas'))) || (p.includes('completo') && (p.includes('gás') || p.includes('gas') || p.includes('botij')))) return 'GAS_COMPL';
             if (p.includes('gás') || p.includes('gas') || p.includes('botij') || p.includes('13kg') || p.includes('carga')) return 'GAS13';
-            if (p.includes('vasilhame') && p.includes('água') || p.includes('vasilhame') && p.includes('agua') || p.includes('completa') && (p.includes('água')||p.includes('agua'))) return 'AGUA_COMPL';
+            if ((p.includes('vasilhame') && (p.includes('água') || p.includes('agua'))) || (p.includes('completa') && (p.includes('água') || p.includes('agua')))) return 'AGUA_COMPL';
             if (p.includes('água') || p.includes('agua')) return 'AGUA';
             return 'OUTRO';
         }
@@ -3253,6 +3287,7 @@
 
         function showToast(msg) {
             const t = document.getElementById('cdToast');
+            if (!t) return;
             t.textContent = msg || 'Dados salvos com sucesso! ✅';
             t.classList.add('show');
             setTimeout(() => t.classList.remove('show'), 3000);
@@ -3287,19 +3322,19 @@
                 const snap = await window.firebaseGet('configuracoes');
                 if (snap.exists()) {
                     const cfg = snap.val();
-                    if (cfg.custos) {
+                    if (cfg && cfg.custos) {
                         custosPadrao.gas13 = N(cfg.custos.gas13) || 85;
                         custosPadrao.p45 = N(cfg.custos.p45) || 350;
                         custosPadrao.vazGas = N(cfg.custos.vazGas) || 150;
                         custosPadrao.agua = N(cfg.custos.agua) || 10;
                         custosPadrao.vazAgua = N(cfg.custos.vazAgua) || 20;
                     }
-                    if (cfg.taxas) {
+                    if (cfg && cfg.taxas) {
                         taxasCartao.credito = N(cfg.taxas.credito);
                         taxasCartao.debito = N(cfg.taxas.debito);
                         taxasCartao.pix = N(cfg.taxas.pix);
                     }
-                    if (cfg.taxasApps) {
+                    if (cfg && cfg.taxasApps) {
                         taxasApps.appgas = N(cfg.taxasApps.appgas) || 10;
                         taxasApps.precogas = N(cfg.taxasApps.precogas) || 8.40;
                     }
@@ -3339,32 +3374,45 @@
             custosPadrao.vazAgua = N(document.getElementById('inputValorCompraVazAgua').value) || 20;
 
             try {
-                // Carregar pedidos
-                const snapPed = await window.firebaseGet('pedidos');
+                // Carregar pedidos (prioriza pedidos_realtime, fallback para pedidos)
+                let snapPed = await window.firebaseGet('pedidos_realtime');
+                if (!snapPed.exists() || !snapPed.val()) {
+                    snapPed = await window.firebaseGet('pedidos');
+                }
                 todosOsPedidos = snapPed.exists() ? snapPed.val() : {};
 
                 // Filtrar pedidos do dia
                 pedidosDoDia = [];
                 Object.entries(todosOsPedidos).forEach(([key, p]) => {
-                    const dtPedido = dataISO(p.data_pedido || p.data);
-                    if (dtPedido === dataSel && (p.status||'').toLowerCase() !== 'cancelado') {
+                    if (!p) return;
+                    const rawData = p.data || p.data_pedido || p.dataHora || '';
+                    const dtPedido = dataISO(rawData);
+                    const status = (p.statusEntrega || p.status || '').toLowerCase().trim();
+                    if (dtPedido === dataSel && status !== 'cancelado') {
                         pedidosDoDia.push({ ...p, _key: key });
                     }
                 });
 
-                // Carregar gastos
-                const snapGastos = await window.firebaseGet('gastos');
+                // Carregar gastos (prioriza gastos_diarios, fallback para gastos)
+                let snapGastos = await window.firebaseGet('gastos_diarios');
+                if (!snapGastos.exists() || !snapGastos.val()) {
+                    snapGastos = await window.firebaseGet('gastos');
+                }
                 const allGastos = snapGastos.exists() ? snapGastos.val() : {};
                 gastosDoDia = [];
                 Object.entries(allGastos).forEach(([key, g]) => {
-                    const dtG = dataISO(g.data);
+                    if (!g) return;
+                    const dtG = dataISO(g.data || g.data_gasto || g.criado_em);
                     if (dtG === dataSel) {
                         gastosDoDia.push({ ...g, _key: key });
                     }
                 });
 
-                // Carregar equipe
-                const snapEquipe = await window.firebaseGet('equipe');
+                // Carregar equipe (prioriza equipe_entregadores, fallback para equipe)
+                let snapEquipe = await window.firebaseGet('equipe_entregadores');
+                if (!snapEquipe.exists() || !snapEquipe.val()) {
+                    snapEquipe = await window.firebaseGet('equipe');
+                }
                 equipe = snapEquipe.exists() ? snapEquipe.val() : {};
 
                 // Carregar fechamento do dia
@@ -3426,22 +3474,22 @@
 
             // Sort by data/hora
             pedidosDoDia.sort((a,b) => {
-                const da = a.data_pedido || a.data || '';
-                const db = b.data_pedido || b.data || '';
+                const da = a.data || a.data_pedido || '';
+                const db = b.data || b.data_pedido || '';
                 return da.localeCompare(db);
             });
 
             pedidosDoDia.forEach(p => {
-                const qtd = parseInt(p.quantidade) || 1;
+                const qtd = parseInt(p.qtd || p.quantidade) || 1;
                 const valor = N(p.valor);
                 const tp = tipoProduto(p.produto);
                 const custo = (p.custo_unitario ? N(p.custo_unitario) : custoUnitario(tp)) * qtd;
                 const dif = valor - custo;
-                const pagNorm = normalizarPagamento(p.pagamento || p.forma_pagamento);
-                const canal = p.canal || p.tipo_pedido || '';
+                const pagNorm = normalizarPagamento(p.pagamento || p.forma_pagamento || p.formaPagamento);
+                const canal = p.canalVenda || p.canal || p.tipo_pedido || '';
                 const entregador = p.entregador || p.responsavel || '';
                 const endereco = p.endereco || p.local_entrega || '';
-                const dataHora = p.data_pedido || p.data || '';
+                const dataHora = p.data || p.data_pedido || '';
 
                 totalPago += valor;
                 totalCusto += custo;
@@ -3507,7 +3555,7 @@
         function renderizarPagamentos() {
             const totais = { DINHEIRO:0, CREDITO:0, DEBITO:0, PIX:0, ONLINE:0, 'GAS DO POVO':0, 'A PRAZO':0 };
             pedidosDoDia.forEach(p => {
-                const pag = normalizarPagamento(p.pagamento || p.forma_pagamento);
+                const pag = normalizarPagamento(p.pagamento || p.forma_pagamento || p.formaPagamento);
                 const val = N(p.valor);
                 if (totais.hasOwnProperty(pag)) totais[pag] += val;
                 else totais['DINHEIRO'] += val;
@@ -3545,8 +3593,11 @@
 
             // Show/hide desc
             if (taxasCartao.credito > 0) { document.getElementById('descPagCredito').style.display='block'; document.getElementById('descPagCredito').textContent = `- ${R$(totais.CREDITO - liqCredito)} taxa`; }
+            else { document.getElementById('descPagCredito').style.display='none'; }
             if (taxasCartao.debito > 0) { document.getElementById('descPagDebito').style.display='block'; document.getElementById('descPagDebito').textContent = `- ${R$(totais.DEBITO - liqDebito)} taxa`; }
+            else { document.getElementById('descPagDebito').style.display='none'; }
             if (taxasCartao.pix > 0) { document.getElementById('descPagPix').style.display='block'; document.getElementById('descPagPix').textContent = `- ${R$(totais.PIX - liqPix)} taxa`; }
+            else { document.getElementById('descPagPix').style.display='none'; }
 
             // Store for bancos
             window._pagTotais = totais;
@@ -3561,7 +3612,7 @@
 
             let totalAppGas = 0, totalPrecoGas = 0, qtdPrecoGas = 0;
             pedidosDoDia.forEach(p => {
-                const canal = normalizarCanal(p.canal || p.tipo_pedido);
+                const canal = normalizarCanal(p.canalVenda || p.canal || p.tipo_pedido);
                 const val = N(p.valor);
                 if (canal.includes('APPGAS') || canal.includes('APP GAS')) totalAppGas += val;
                 if (canal.includes('PRECO') || canal.includes('PREÇO')) { totalPrecoGas += val; qtdPrecoGas++; }
@@ -3585,7 +3636,9 @@
             document.getElementById('liqTotalAppsLiquido').textContent = R$(totalAppsLiq);
 
             if (taxaAppGasVal > 0) { document.getElementById('descAppGasTotal').style.display='block'; document.getElementById('descAppGasTotal').textContent = `- ${R$(taxaAppGasVal)} taxa`; }
+            else { document.getElementById('descAppGasTotal').style.display='none'; }
             if (taxaPrecoGasVal > 0) { document.getElementById('descPrecoGasTotal').style.display='block'; document.getElementById('descPrecoGasTotal').textContent = `- ${R$(taxaPrecoGasVal)} taxa`; }
+            else { document.getElementById('descPrecoGasTotal').style.display='none'; }
 
             window._taxaAppGasVal = taxaAppGasVal;
             window._taxaPrecoGasVal = taxaPrecoGasVal;
@@ -3635,7 +3688,7 @@
             pedidosDoDia.forEach(p => {
                 totalVenda += N(p.valor);
                 const tp = tipoProduto(p.produto);
-                const qtd = parseInt(p.quantidade) || 1;
+                const qtd = parseInt(p.qtd || p.quantidade) || 1;
                 totalCusto += (p.custo_unitario ? N(p.custo_unitario) : custoUnitario(tp)) * qtd;
             });
             const despesas = window._totalDespesas || 0;
@@ -3656,10 +3709,10 @@
             const entradasMP = (t.CREDITO||0) + (t.DEBITO||0) + (t.PIX||0) - taxas;
             const entradasCaixa = t.DINHEIRO || 0;
 
-            // Despesas pagas por PIX/Banco (gastos marcados como PIX, Débito, Crédito)
+            // Despesas pagas por PIX/Banco vs Dinheiro
             let saidasMP = 0, saidasCaixa = 0;
             gastosDoDia.forEach(g => {
-                const pag = (g.pagamento||'').toUpperCase();
+                const pag = (g.formaPagamento || g.pagamento || '').toUpperCase();
                 const val = N(g.valor);
                 if (pag.includes('DINHEIRO')) saidasCaixa += val;
                 else saidasMP += val;
@@ -3686,7 +3739,7 @@
             const entradasCaixa = t.DINHEIRO || 0;
             let saidasMP = 0, saidasCaixa = 0;
             gastosDoDia.forEach(g => {
-                const pag = (g.pagamento||'').toUpperCase();
+                const pag = (g.formaPagamento || g.pagamento || '').toUpperCase();
                 if (pag.includes('DINHEIRO')) saidasCaixa += N(g.valor);
                 else saidasMP += N(g.valor);
             });
@@ -3730,7 +3783,7 @@
                 tr.innerHTML = `
                     <td style="font-weight:700; font-size:12px;">${g.descricao||g.nome||'--'}</td>
                     <td style="font-size:11px;">${g.grupo||g.categoria||'--'}</td>
-                    <td style="font-size:11px;">${g.pagamento||'--'}</td>
+                    <td style="font-size:11px;">${g.formaPagamento||g.pagamento||'--'}</td>
                     <td style="text-align:right; font-weight:800; color:#e74c3c;">${R$(N(g.valor))}</td>
                     <td style="text-align:center;">
                         <button onclick="window.excluirGasto('${g._key}')" style="background:none; border:none; cursor:pointer; font-size:12px;" title="Excluir gasto">🗑️</button>
@@ -3750,16 +3803,17 @@
             if (!desc || val <= 0) { alert('Preencha descrição e valor.'); return; }
 
             const gasto = {
-                data: dataBR(dataSel),
+                data: dataSel,
                 descricao: desc,
                 valor: val,
+                formaPagamento: pag,
                 pagamento: pag,
                 grupo: grupo,
                 criado_em: new Date().toISOString()
             };
 
             try {
-                await window.firebasePush('gastos', gasto);
+                await window.firebasePush('gastos_diarios', gasto);
                 showToast('Gasto lançado com sucesso! ✅');
                 document.getElementById('formGastoRapido').reset();
                 recarregarTudo();
@@ -3771,7 +3825,7 @@
         window.excluirGasto = async function(key) {
             if (!confirm('Tem certeza que deseja excluir este gasto?')) return;
             try {
-                await window.firebaseRemove(`gastos/${key}`);
+                await window.firebaseRemove(`gastos_diarios/${key}`);
                 showToast('Gasto excluído! 🗑️');
                 recarregarTudo();
             } catch(e) { alert('Erro ao excluir: ' + e.message); }
@@ -3788,7 +3842,7 @@
             pedidosDoDia.forEach(p => {
                 const nome = p.entregador || p.responsavel || 'Sem Entregador';
                 if (!por[nome]) por[nome] = { qtd: 0, total: 0 };
-                por[nome].qtd += parseInt(p.quantidade) || 1;
+                por[nome].qtd += parseInt(p.qtd || p.quantidade) || 1;
                 por[nome].total += N(p.valor);
             });
 
@@ -3823,14 +3877,14 @@
 
             // Venda gás completo (vasilhame)
             let gasCompl = 0;
-            pedidosDoDia.forEach(p => { if (tipoProduto(p.produto) === 'GAS_COMPL') gasCompl += parseInt(p.quantidade) || 1; });
+            pedidosDoDia.forEach(p => { if (tipoProduto(p.produto) === 'GAS_COMPL') gasCompl += parseInt(p.qtd || p.quantidade) || 1; });
             document.getElementById('tdPatioGasCompleto').textContent = gasCompl;
 
             // Venda gás total (sem água)
             let vendaGas = 0;
             pedidosDoDia.forEach(p => {
                 const tp = tipoProduto(p.produto);
-                if (tp === 'GAS13' || tp === 'GAS_COMPL' || tp === 'P45') vendaGas += parseInt(p.quantidade) || 1;
+                if (tp === 'GAS13' || tp === 'GAS_COMPL' || tp === 'P45') vendaGas += parseInt(p.qtd || p.quantidade) || 1;
             });
             document.getElementById('tdPatioVendaGasDia').textContent = vendaGas;
 
@@ -3953,16 +4007,16 @@
             document.getElementById('editPedidoId').value = key;
             document.getElementById('editPedidoValor').value = N(p.valor);
             document.getElementById('editPedidoCusto').value = p.custo_unitario || '';
-            document.getElementById('editPedidoQtd').value = p.quantidade || 1;
+            document.getElementById('editPedidoQtd').value = p.qtd || p.quantidade || 1;
             document.getElementById('editPedidoProduto').value = p.produto || '';
-            document.getElementById('editPedidoPagamento').value = normalizarPagamento(p.pagamento || p.forma_pagamento);
-            document.getElementById('editPedidoCanal').value = p.canal || p.tipo_pedido || '';
-            document.getElementById('editPedidoStatus').value = p.status || 'Concluída';
-            document.getElementById('editPedidoData').value = p.data_pedido || p.data || '';
+            document.getElementById('editPedidoPagamento').value = normalizarPagamento(p.pagamento || p.forma_pagamento || p.formaPagamento);
+            document.getElementById('editPedidoCanal').value = p.canalVenda || p.canal || p.tipo_pedido || '';
+            document.getElementById('editPedidoStatus').value = p.statusEntrega || p.status || 'Concluída';
+            document.getElementById('editPedidoData').value = p.data || p.data_pedido || '';
             document.getElementById('editPedidoCliente').value = p.cliente || p.nome || '';
             document.getElementById('editPedidoTelefone').value = p.telefone || '';
             document.getElementById('editPedidoEndereco').value = p.endereco || p.local_entrega || '';
-            document.getElementById('editPedidoObs').value = p.observacoes || p.obs || '';
+            document.getElementById('editPedidoObs').value = p.observacoes || p.obs || p.observacao || '';
 
             // Preencher entregadores
             const selEntr = document.getElementById('editPedidoEntregador');
@@ -3977,7 +4031,7 @@
 
             // Preview
             const tp = tipoProduto(p.produto);
-            const qtd = parseInt(p.quantidade) || 1;
+            const qtd = parseInt(p.qtd || p.quantidade) || 1;
             const custo = (p.custo_unitario ? N(p.custo_unitario) : custoUnitario(tp)) * qtd;
             document.getElementById('editPreviewValor').textContent = R$(N(p.valor));
             document.getElementById('editPreviewCusto').textContent = R$(custo);
@@ -3996,13 +4050,17 @@
 
             const updates = {
                 valor: N(document.getElementById('editPedidoValor').value),
+                qtd: parseInt(document.getElementById('editPedidoQtd').value) || 1,
                 quantidade: parseInt(document.getElementById('editPedidoQtd').value) || 1,
                 produto: document.getElementById('editPedidoProduto').value,
                 pagamento: document.getElementById('editPedidoPagamento').value,
                 forma_pagamento: document.getElementById('editPedidoPagamento').value,
                 canal: document.getElementById('editPedidoCanal').value,
+                canalVenda: document.getElementById('editPedidoCanal').value,
                 tipo_pedido: document.getElementById('editPedidoCanal').value,
                 status: document.getElementById('editPedidoStatus').value,
+                statusEntrega: document.getElementById('editPedidoStatus').value,
+                data: document.getElementById('editPedidoData').value,
                 data_pedido: document.getElementById('editPedidoData').value,
                 cliente: document.getElementById('editPedidoCliente').value,
                 nome: document.getElementById('editPedidoCliente').value,
@@ -4017,7 +4075,7 @@
             if (custoInput) updates.custo_unitario = N(custoInput);
 
             try {
-                await window.firebaseUpdate(`pedidos/${key}`, updates);
+                await window.firebaseUpdate(`pedidos_realtime/${key}`, updates);
                 showToast('Venda atualizada! ✅');
                 fecharModalEditarPedido();
                 recarregarTudo();
@@ -4035,10 +4093,10 @@
                 filtrados = pedidosDoDia;
                 titulo.textContent = '📋 Todas as Vendas do Dia';
             } else if (tipo === 'REUNIDO') {
-                filtrados = pedidosDoDia.filter(p => ['CREDITO','DEBITO','PIX'].includes(normalizarPagamento(p.pagamento||p.forma_pagamento)));
+                filtrados = pedidosDoDia.filter(p => ['CREDITO','DEBITO','PIX'].includes(normalizarPagamento(p.pagamento||p.forma_pagamento||p.formaPagamento)));
                 titulo.textContent = '📋 Crédito + Débito + PIX';
             } else {
-                filtrados = pedidosDoDia.filter(p => normalizarPagamento(p.pagamento||p.forma_pagamento) === tipo);
+                filtrados = pedidosDoDia.filter(p => normalizarPagamento(p.pagamento||p.forma_pagamento||p.formaPagamento) === tipo);
                 titulo.textContent = `📋 Vendas - ${tipo}`;
             }
 
@@ -4050,9 +4108,9 @@
                 total += val;
                 html += `<tr style="border-bottom:1px solid #eee;">
                     <td style="padding:6px;">${p.cliente||p.nome||'--'}</td>
-                    <td>${(p.quantidade||1)}x ${p.produto||'?'}</td>
+                    <td>${(p.qtd||p.quantidade||1)}x ${p.produto||'?'}</td>
                     <td style="font-weight:700; color:#27ae60;">${R$(val)}</td>
-                    <td>${p.pagamento||p.forma_pagamento||'--'}</td>
+                    <td>${p.pagamento||p.forma_pagamento||p.formaPagamento||'--'}</td>
                 </tr>`;
             });
             html += `</tbody><tfoot><tr style="background:#e8f5e9; font-weight:800;"><td style="padding:8px;">TOTAL</td><td>${filtrados.length} vendas</td><td style="color:#27ae60;">${R$(total)}</td><td></td></tr></tfoot></table>`;
@@ -4078,7 +4136,7 @@
             gastosDoDia.forEach(g => {
                 const v = N(g.valor);
                 total += v;
-                html += `<tr style="border-bottom:1px solid #eee;"><td style="padding:6px;">${g.descricao||'--'}</td><td>${g.pagamento||'--'}</td><td style="font-weight:700; color:#e74c3c;">${R$(v)}</td></tr>`;
+                html += `<tr style="border-bottom:1px solid #eee;"><td style="padding:6px;">${g.descricao||'--'}</td><td>${g.formaPagamento||g.pagamento||'--'}</td><td style="font-weight:700; color:#e74c3c;">${R$(v)}</td></tr>`;
             });
             html += `</tbody><tfoot><tr style="background:#fff3e0; font-weight:800;"><td style="padding:8px;">TOTAL</td><td>${gastosDoDia.length} lanç.</td><td style="color:#e74c3c;">${R$(total)}</td></tr></tfoot></table>`;
             document.getElementById('cdModalCorpo').innerHTML = html;
