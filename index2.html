@@ -6714,15 +6714,43 @@
 
         let chartPizzaMensal = null;
 
+        function extrairAnoMesHistorico(dataStr) {
+            if (!dataStr) return null;
+            const str = String(dataStr).trim();
+            const slashMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+            if (slashMatch) {
+                return { dia: parseInt(slashMatch[1]), mes: parseInt(slashMatch[2]), ano: slashMatch[3] };
+            }
+            const dashMatch = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+            if (dashMatch) {
+                return { ano: dashMatch[1], mes: parseInt(dashMatch[2]), dia: parseInt(dashMatch[3]) };
+            }
+            const yearMatch = str.match(/(\d{4})/);
+            const monthMatch = str.match(/[\/-](\d{1,2})[\/-]/);
+            if (yearMatch && monthMatch) {
+                return { ano: yearMatch[1], mes: parseInt(monthMatch[1]), dia: 1 };
+            }
+            return null;
+        }
+
+        function parseValorMoedaHistorico(val) {
+            if (val === null || val === undefined) return 0;
+            if (typeof val === 'number') return isNaN(val) ? 0 : val;
+            const s = String(val).replace('R$', '').replace(/\s+/g, '').replace(/\./g, '').replace(',', '.').trim();
+            const num = parseFloat(s);
+            return isNaN(num) ? 0 : num;
+        }
+
         function abrirHistoricoAnual() {
             const selectAno = document.getElementById('selectAnoHistorico');
             selectAno.innerHTML = '';
 
+            const pedidos = window.todosPedidosFirebase || [];
             const anosDisponiveis = new Set();
-            window.todosPedidosFirebase.forEach(p => {
-                if (p.data) {
-                    const match = p.data.match(/(\d{4})/);
-                    if (match) anosDisponiveis.add(match[1]);
+            pedidos.forEach(p => {
+                const dt = extrairAnoMesHistorico(p.data);
+                if (dt && dt.ano) {
+                    anosDisponiveis.add(dt.ano);
                 }
             });
 
@@ -6756,28 +6784,27 @@
 
             let totalAnoValor = 0;
             let totalAnoVendas = 0;
+            const pedidos = window.todosPedidosFirebase || [];
 
-            window.todosPedidosFirebase.forEach(p => {
+            pedidos.forEach(p => {
                 if (!p.data) return;
-                const match = p.data.match(/(\d{4})/);
-                if (!match || match[1] !== ano) return;
+                const sNorm = (p.statusEntrega || '').trim().toUpperCase();
+                if (sNorm === 'CANCELADA' || sNorm === 'CANCELADO') return;
 
-                const mesMatch = p.data.match(/\/(\d{2})\//);
-                if (!mesMatch) return;
-                const mesNum = parseInt(mesMatch[1]);
-
-                if (!dadosMes[mesNum]) return;
+                const dt = extrairAnoMesHistorico(p.data);
+                if (!dt || dt.ano !== ano) return;
+                if (!dadosMes[dt.mes]) return;
 
                 const produto = p.produto || 'OUTRO';
-                if (!dadosMes[mesNum].produtos[produto]) {
-                    dadosMes[mesNum].produtos[produto] = { qtd: 0, valor: 0 };
+                if (!dadosMes[dt.mes].produtos[produto]) {
+                    dadosMes[dt.mes].produtos[produto] = { qtd: 0, valor: 0 };
                 }
 
-                const valor = parseFloat(p.valor.replace(/\./g, '').replace(',', '.')) || 0;
-                dadosMes[mesNum].produtos[produto].qtd++;
-                dadosMes[mesNum].produtos[produto].valor += valor;
-                dadosMes[mesNum].totalVendas++;
-                dadosMes[mesNum].totalValor += valor;
+                const valor = parseValorMoedaHistorico(p.valor);
+                dadosMes[dt.mes].produtos[produto].qtd++;
+                dadosMes[dt.mes].produtos[produto].valor += valor;
+                dadosMes[dt.mes].totalVendas++;
+                dadosMes[dt.mes].totalValor += valor;
                 totalAnoVendas++;
                 totalAnoValor += valor;
             });
@@ -6841,19 +6868,21 @@
             const produtos = {};
             let totalVendas = 0;
             let totalValor = 0;
+            const pedidos = window.todosPedidosFirebase || [];
 
-            window.todosPedidosFirebase.forEach(p => {
+            pedidos.forEach(p => {
                 if (!p.data) return;
-                const matchAno = p.data.match(/(\d{4})/);
-                const matchMes = p.data.match(/\/(\d{2})\//);
-                if (!matchAno || matchAno[1] !== ano) return;
-                if (!matchMes || parseInt(matchMes[1]) !== mesNum) return;
+                const sNorm = (p.statusEntrega || '').trim().toUpperCase();
+                if (sNorm === 'CANCELADA' || sNorm === 'CANCELADO') return;
+
+                const dt = extrairAnoMesHistorico(p.data);
+                if (!dt || dt.ano !== ano || dt.mes !== mesNum) return;
 
                 const produto = p.produto || 'OUTRO';
                 if (!produtos[produto]) {
                     produtos[produto] = { qtd: 0, valor: 0 };
                 }
-                const valor = parseFloat(p.valor.replace(/\./g, '').replace(',', '.')) || 0;
+                const valor = parseValorMoedaHistorico(p.valor);
                 produtos[produto].qtd++;
                 produtos[produto].valor += valor;
                 totalVendas++;
@@ -6872,7 +6901,7 @@
             produtosOrdenados.forEach(([produto, info], idx) => {
                 const precoMedio = info.qtd > 0 ? info.valor / info.qtd : 0;
                 const nomeCurto = produto.split('-')[0].trim();
-                const pct = ((info.qtd / totalVendas) * 100).toFixed(1);
+                const pct = totalVendas > 0 ? ((info.qtd / totalVendas) * 100).toFixed(1) : '0';
 
                 htmlLista += `<div onclick="window.mostrarFormasPagamento('${produto.replace(/'/g, "\\'")}', ${mesNum})" style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; border-radius: 8px; margin-bottom: 5px; background: #fafafa; transition: all 0.2s;" onmouseover="this.style.background='#e8f5e9'" onmouseout="this.style.background='#fafafa'">
                     <div>
@@ -6927,22 +6956,22 @@
         window.mostrarFormasPagamento = function (produto, mesNum) {
             const ano = document.getElementById('selectAnoHistorico').value;
             const formasPagamento = {};
+            const pedidos = window.todosPedidosFirebase || [];
 
-            window.todosPedidosFirebase.forEach(p => {
+            pedidos.forEach(p => {
                 if (!p.data) return;
-                const matchAno = p.data.match(/(\d{4})/);
-                const matchMes = p.data.match(/\/(\d{2})\//);
-                if (!matchAno || matchAno[1] !== ano) return;
-                if (!matchMes) return;
-                const mesPedido = parseInt(matchMes[1]);
-                if (mesPedido !== mesNum) return;
+                const sNorm = (p.statusEntrega || '').trim().toUpperCase();
+                if (sNorm === 'CANCELADA' || sNorm === 'CANCELADO') return;
+
+                const dt = extrairAnoMesHistorico(p.data);
+                if (!dt || dt.ano !== ano || dt.mes !== mesNum) return;
                 if (p.produto !== produto) return;
 
                 const canal = p.canalVenda || 'OUTRO';
                 if (!formasPagamento[canal]) {
                     formasPagamento[canal] = { qtd: 0, valor: 0 };
                 }
-                const valor = parseFloat(p.valor.replace(/\./g, '').replace(',', '.')) || 0;
+                const valor = parseValorMoedaHistorico(p.valor);
                 formasPagamento[canal].qtd++;
                 formasPagamento[canal].valor += valor;
             });
@@ -7003,18 +7032,19 @@
                 dadosMes[i + 1] = { mes: mes, totalVendas: 0, totalValor: 0 };
             });
 
-            window.todosPedidosFirebase.forEach(p => {
+            const pedidos = window.todosPedidosFirebase || [];
+            pedidos.forEach(p => {
                 if (!p.data) return;
-                const matchAno = p.data.match(/(\d{4})/);
-                const matchMes = p.data.match(/\/(\d{2})\//);
-                if (!matchAno || matchAno[1] !== ano) return;
-                if (!matchMes) return;
-                const mesNum = parseInt(matchMes[1]);
-                if (!dadosMes[mesNum]) return;
+                const sNorm = (p.statusEntrega || '').trim().toUpperCase();
+                if (sNorm === 'CANCELADA' || sNorm === 'CANCELADO') return;
 
-                const valor = parseFloat(p.valor.replace(/\./g, '').replace(',', '.')) || 0;
-                dadosMes[mesNum].totalVendas++;
-                dadosMes[mesNum].totalValor += valor;
+                const dt = extrairAnoMesHistorico(p.data);
+                if (!dt || dt.ano !== ano) return;
+                if (!dadosMes[dt.mes]) return;
+
+                const valor = parseValorMoedaHistorico(p.valor);
+                dadosMes[dt.mes].totalVendas++;
+                dadosMes[dt.mes].totalValor += valor;
             });
 
             let html = `<table border="1" style="border-collapse: collapse; width: 100%; font-size: 12px;">
