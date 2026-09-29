@@ -403,14 +403,6 @@
             display: flex;
             gap: 5px;
         }
-
-            color: var(--text-dark);
-            font-family: 'Outfit';
-            font-size: 14px;
-            font-weight: 800;
-            text-transform: uppercase;
-            margin-bottom: 15px;
-        }
     </style>
     <!-- VPS Socket.IO & Adapter (Primeiros Scripts) -->
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
@@ -537,11 +529,408 @@
                 </thead>
                 <tbody id="corpoTabelaGastos">
                 </tbody>
-            </table>
         </div>
     </div>
 
-    
+    <!-- Script de Gestão de Gastos Conectado à VPS -->
+    <script>
+        let todosGastos = [];
+        let todosGrupos = [];
+        let gastoEditandoId = null;
+        let grupoEditandoId = null;
+        let chartPizzaInstance = null;
+        let chartBarInstance = null;
+
+        const socket = window.vpsSocket || (typeof io !== 'undefined' ? io('http://179.236.224.192:3000') : null);
+
+        function initGastos() {
+            // Inicializar datas (mês atual)
+            const hoje = new Date();
+            const ano = hoje.getFullYear();
+            const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+            const dia = String(hoje.getDate()).padStart(2, '0');
+
+            document.getElementById('gastoData').value = `${ano}-${mes}-${dia}`;
+            document.getElementById('gastoDataInicio').value = `${ano}-${mes}-01`;
+            document.getElementById('gastoDataFim').value = `${ano}-${mes}-${dia}`;
+
+            // Listeners de filtros
+            document.getElementById('gastoDataInicio').addEventListener('change', renderizar);
+            document.getElementById('gastoDataFim').addEventListener('change', renderizar);
+            document.getElementById('gastoBuscaDescricao').addEventListener('input', renderizar);
+            document.getElementById('filtroGrupoGasto').addEventListener('change', renderizar);
+
+            carregarDados();
+
+            if (socket) {
+                socket.on('connect', carregarDados);
+                socket.on('changed_gastos_diarios', carregarDados);
+                socket.on('changed_grupos_gastos', carregarDados);
+            }
+        }
+
+        function carregarDados() {
+            if (!socket) {
+                ocultarLoading();
+                return;
+            }
+
+            socket.emit('get', { path: 'grupos_gastos' }, (gruposData) => {
+                todosGrupos = [];
+                if (gruposData) {
+                    Object.keys(gruposData).forEach(k => {
+                        todosGrupos.push({ id: k, ...gruposData[k] });
+                    });
+                }
+                atualizarSelectGrupos();
+                renderizarGruposModal();
+
+                socket.emit('get', { path: 'gastos_diarios' }, (gastosData) => {
+                    todosGastos = [];
+                    if (gastosData) {
+                        Object.keys(gastosData).forEach(k => {
+                            todosGastos.push({ id: k, ...gastosData[k] });
+                        });
+                    }
+
+                    // Ordenar decrescente por data
+                    todosGastos.sort((a, b) => new Date(b.data || 0) - new Date(a.data || 0));
+
+                    atualizarDatalistDescricoes();
+                    renderizar();
+                    ocultarLoading();
+                });
+            });
+        }
+
+        function ocultarLoading() {
+            const loading = document.getElementById('loading');
+            if (loading) loading.style.display = 'none';
+        }
+
+        function atualizarSelectGrupos() {
+            const selForm = document.getElementById('gastoGrupo');
+            const selFiltro = document.getElementById('filtroGrupoGasto');
+            const valForm = selForm.value;
+            const valFiltro = selFiltro.value;
+
+            selForm.innerHTML = '<option value="">Sem grupo</option>';
+            selFiltro.innerHTML = '<option value="">Todos os grupos</option>';
+
+            todosGrupos.forEach(g => {
+                const opt1 = document.createElement('option');
+                opt1.value = g.nome;
+                opt1.textContent = g.nome;
+                selForm.appendChild(opt1);
+
+                const opt2 = document.createElement('option');
+                opt2.value = g.nome;
+                opt2.textContent = g.nome;
+                selFiltro.appendChild(opt2);
+            });
+
+            selForm.value = valForm;
+            selFiltro.value = valFiltro;
+        }
+
+        function atualizarDatalistDescricoes() {
+            const datalist = document.getElementById('listaDescricoesGastos');
+            if (!datalist) return;
+            const descricoes = [...new Set(todosGastos.map(g => (g.descricao || '').trim()).filter(Boolean))].sort();
+            datalist.innerHTML = descricoes.map(d => `<option value="${d}">`).join('');
+        }
+
+        function renderizar() {
+            const dInicio = document.getElementById('gastoDataInicio').value;
+            const dFim = document.getElementById('gastoDataFim').value;
+            const busca = (document.getElementById('gastoBuscaDescricao').value || '').toLowerCase().trim();
+            const grupoFiltro = document.getElementById('filtroGrupoGasto').value;
+
+            const filtrados = todosGastos.filter(g => {
+                if (dInicio && g.data < dInicio) return false;
+                if (dFim && g.data > dFim) return false;
+                if (grupoFiltro && (g.grupo || '') !== grupoFiltro) return false;
+                if (busca && !(g.descricao || '').toLowerCase().includes(busca)) return false;
+                return true;
+            });
+
+            // Tabela
+            const tbody = document.getElementById('corpoTabelaGastos');
+            tbody.innerHTML = '';
+
+            let total = 0;
+            const porGrupo = {};
+
+            filtrados.forEach(g => {
+                const valor = parseFloat(g.valor) || 0;
+                total += valor;
+
+                const grp = g.grupo || 'Sem grupo';
+                porGrupo[grp] = (porGrupo[grp] || 0) + valor;
+
+                const dataFormatada = g.data ? g.data.split('-').reverse().join('/') : '-';
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${dataFormatada}</td>
+                    <td><b>${g.descricao || '-'}</b></td>
+                    <td><span style="background:#f1f5f9; padding:4px 8px; border-radius:6px; font-size:12px; font-weight:600;">${g.grupo || 'Sem grupo'}</span></td>
+                    <td>${g.formaPagamento || 'PIX'}</td>
+                    <td style="font-weight:700; color:var(--danger);">R$ ${valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td>
+                        <button class="btn-action btn-edit" onclick="editarGasto('${g.id}')">✏️</button>
+                        <button class="btn-action btn-delete" onclick="excluirGasto('${g.id}')">🗑️</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            if (filtrados.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:30px; color:var(--text-light);">Nenhum gasto encontrado para este período/filtro.</td></tr>`;
+            }
+
+            document.getElementById('totalGastosFiltrado').textContent = total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+            atualizarGraficos(porGrupo);
+        }
+
+        function atualizarGraficos(porGrupo) {
+            const labels = Object.keys(porGrupo);
+            const data = Object.values(porGrupo);
+            const cores = ['#ff7675', '#74b9ff', '#55efc4', '#fdcb6e', '#a29bfe', '#00cec9', '#e17055', '#0984e3', '#00b894', '#6c5ce7'];
+
+            if (chartPizzaInstance) chartPizzaInstance.destroy();
+            if (chartBarInstance) chartBarInstance.destroy();
+
+            const ctxPizza = document.getElementById('chartGastosGrupo');
+            if (ctxPizza && labels.length > 0) {
+                chartPizzaInstance = new Chart(ctxPizza.getContext('2d'), {
+                    type: 'doughnut',
+                    data: {
+                        labels,
+                        datasets: [{
+                            data,
+                            backgroundColor: cores.slice(0, labels.length)
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: { position: 'bottom', labels: { font: { family: 'Outfit', size: 11 } } }
+                        }
+                    }
+                });
+            }
+
+            const ctxBar = document.getElementById('chartGastosGrupoBar');
+            if (ctxBar && labels.length > 0) {
+                chartBarInstance = new Chart(ctxBar.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels,
+                        datasets: [{
+                            label: 'Total por Grupo (R$)',
+                            data,
+                            backgroundColor: '#2ecc71',
+                            borderRadius: 8
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        scales: {
+                            y: { beginAtZero: true }
+                        }
+                    }
+                });
+            }
+        }
+
+        function salvarGasto() {
+            const valorInput = document.getElementById('gastoValor').value;
+            const descricao = document.getElementById('gastoDescricao').value.trim();
+            const grupo = document.getElementById('gastoGrupo').value;
+            const formaPagamento = document.getElementById('gastoFormaPagamento').value;
+            const data = document.getElementById('gastoData').value;
+
+            const valor = parseFloat(valorInput);
+            if (isNaN(valor) || valor <= 0) {
+                alert('Informe um valor válido para o gasto!');
+                return;
+            }
+            if (!descricao) {
+                alert('Informe a descrição do gasto!');
+                return;
+            }
+            if (!data) {
+                alert('Informe a data do gasto!');
+                return;
+            }
+
+            const payload = {
+                valor,
+                descricao,
+                grupo: grupo || 'Sem grupo',
+                formaPagamento: formaPagamento || 'PIX',
+                data,
+                createdAt: new Date().toISOString()
+            };
+
+            const id = gastoEditandoId || Date.now().toString();
+
+            socket.emit('set', { path: `gastos_diarios/${id}`, payload }, () => {
+                alert(gastoEditandoId ? 'Gasto atualizado com sucesso! ✅' : 'Gasto cadastrado com sucesso! ✅');
+                cancelarEdicao();
+                carregarDados();
+            });
+        }
+
+        function editarGasto(id) {
+            const g = todosGastos.find(item => item.id === id);
+            if (!g) return;
+
+            gastoEditandoId = id;
+            document.getElementById('gastoValor').value = g.valor;
+            document.getElementById('gastoDescricao').value = g.descricao || '';
+            document.getElementById('gastoGrupo').value = g.grupo || '';
+            document.getElementById('gastoFormaPagamento').value = g.formaPagamento || 'PIX';
+            document.getElementById('gastoData').value = g.data || '';
+
+            document.getElementById('tituloFormularioGasto').textContent = '✏️ Editar Gasto';
+            document.getElementById('btnSalvarGasto').textContent = '💾 ATUALIZAR GASTO';
+            document.getElementById('btnCancelarEdicao').style.display = 'block';
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function cancelarEdicao() {
+            gastoEditandoId = null;
+            document.getElementById('gastoValor').value = '';
+            document.getElementById('gastoDescricao').value = '';
+            document.getElementById('gastoGrupo').value = '';
+            document.getElementById('gastoFormaPagamento').value = 'PIX';
+
+            const hoje = new Date().toISOString().split('T')[0];
+            document.getElementById('gastoData').value = hoje;
+
+            document.getElementById('tituloFormularioGasto').textContent = '➕ Cadastrar Novo Gasto';
+            document.getElementById('btnSalvarGasto').textContent = '💾 CADASTRAR GASTO';
+            document.getElementById('btnCancelarEdicao').style.display = 'none';
+        }
+
+        function excluirGasto(id) {
+            if (!confirm('Deseja realmente excluir este gasto?')) return;
+            socket.emit('remove', `gastos_diarios/${id}`, () => {
+                carregarDados();
+            });
+        }
+
+        // Gestão de Grupos
+        function toggleFormGrupo() {
+            const form = document.getElementById('formNovoGrupo');
+            form.style.display = form.style.display === 'none' ? 'flex' : 'none';
+        }
+
+        function salvarGrupo() {
+            const nomeInput = document.getElementById('novoGrupoNome');
+            const nome = nomeInput.value.trim().toUpperCase();
+            if (!nome) {
+                alert('Digite o nome do grupo!');
+                return;
+            }
+
+            const id = grupoEditandoId || Date.now().toString();
+            socket.emit('set', { path: `grupos_gastos/${id}`, payload: { nome } }, () => {
+                nomeInput.value = '';
+                cancelarEdicaoGrupo();
+                carregarDados();
+            });
+        }
+
+        function editarGrupo(id, nome) {
+            grupoEditandoId = id;
+            document.getElementById('novoGrupoNome').value = nome;
+            document.getElementById('lblNovoGrupo').textContent = 'Editar Grupo';
+            document.getElementById('btnSalvarGrupo').textContent = 'ATUALIZAR';
+            document.getElementById('btnCancelarEdicaoGrupo').style.display = 'inline-block';
+        }
+
+        function cancelarEdicaoGrupo() {
+            grupoEditandoId = null;
+            document.getElementById('novoGrupoNome').value = '';
+            document.getElementById('lblNovoGrupo').textContent = 'Novo Grupo';
+            document.getElementById('btnSalvarGrupo').textContent = 'SALVAR';
+            document.getElementById('btnCancelarEdicaoGrupo').style.display = 'none';
+        }
+
+        function excluirGrupo(id) {
+            if (!confirm('Deseja excluir este grupo?')) return;
+            socket.emit('remove', `grupos_gastos/${id}`, () => {
+                carregarDados();
+            });
+        }
+
+        function renderizarGruposModal() {
+            const lista = document.getElementById('listaGruposCadastrados');
+            if (!lista) return;
+            lista.innerHTML = '';
+
+            todosGrupos.forEach(g => {
+                const div = document.createElement('div');
+                div.className = 'grupo-item';
+                div.innerHTML = `
+                    <span class="grupo-item-nome">${g.nome}</span>
+                    <div class="grupo-actions">
+                        <button class="btn-action btn-edit" onclick="editarGrupo('${g.id}', '${g.nome.replace(/'/g, "\\'")}')">✏️</button>
+                        <button class="btn-action btn-delete" onclick="excluirGrupo('${g.id}')">🗑️</button>
+                    </div>
+                `;
+                lista.appendChild(div);
+            });
+        }
+
+        function exportarExcelGastos() {
+            const dInicio = document.getElementById('gastoDataInicio').value;
+            const dFim = document.getElementById('gastoDataFim').value;
+            const busca = (document.getElementById('gastoBuscaDescricao').value || '').toLowerCase().trim();
+            const grupoFiltro = document.getElementById('filtroGrupoGasto').value;
+
+            const filtrados = todosGastos.filter(g => {
+                if (dInicio && g.data < dInicio) return false;
+                if (dFim && g.data > dFim) return false;
+                if (grupoFiltro && (g.grupo || '') !== grupoFiltro) return false;
+                if (busca && !(g.descricao || '').toLowerCase().includes(busca)) return false;
+                return true;
+            });
+
+            let html = `<table border="1"><thead><tr><th>Data</th><th>Descrição</th><th>Grupo</th><th>Forma Pagamento</th><th>Valor (R$)</th></tr></thead><tbody>`;
+            let total = 0;
+
+            filtrados.forEach(g => {
+                const valor = parseFloat(g.valor) || 0;
+                total += valor;
+                const dt = g.data ? g.data.split('-').reverse().join('/') : '';
+                html += `<tr><td>${dt}</td><td>${g.descricao || ''}</td><td>${g.grupo || ''}</td><td>${g.formaPagamento || ''}</td><td>${valor.toFixed(2).replace('.', ',')}</td></tr>`;
+            });
+
+            html += `<tr><td colspan="4"><b>TOTAL</b></td><td><b>${total.toFixed(2).replace('.', ',')}</b></td></tr></tbody></table>`;
+
+            const blob = new Blob(['\ufeff' + html], { type: 'application/vnd.ms-excel' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `gastos_${dInicio || 'todos'}_a_${dFim || 'todos'}.xls`;
+            a.click();
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initGastos);
+        } else {
+            initGastos();
+        }
+    </script>
 </body>
 
 </html>
