@@ -3186,6 +3186,926 @@
     <div id="cdToast" class="toast">Dados salvos com sucesso! ✅</div>
 
     <!-- Firebase Logic & Controller Scripts -->
+    <script>
+    (function(){
+        'use strict';
+
+        // ========== STATE ==========
+        let pedidosDoDia = [];
+        let todosOsPedidos = {};
+        let gastosDoDia = [];
+        let equipe = {};
+        let custosPadrao = { gas13: 85, p45: 350, vazGas: 150, agua: 10, vazAgua: 20 };
+        let taxasCartao = { credito: 0, debito: 0, pix: 0 };
+        let taxasApps = { appgas: 10, precogas: 8.40 };
+        let fechamentoBancos = {};
+        let controlePatio = {};
+        let editandoPedidoKey = null;
+
+        // ========== HELPERS ==========
+        const R$ = v => 'R$ ' + (v||0).toFixed(2).replace('.', ',');
+        const N = v => parseFloat(v) || 0;
+
+        function dataISO(str) {
+            if (!str) return null;
+            if (str.includes('-') && str.split('-')[0].length === 4) return str.split('T')[0].trim();
+            if (str.includes('/')) { const p = str.split('/'); return `${p[2].length===2?'20'+p[2]:p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`; }
+            if (str.includes('-')) { const p = str.split('-'); if(p[2]&&p[2].length===4) return `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`; }
+            return null;
+        }
+        function dataBR(iso) { if(!iso)return '--/--/----'; const [y,m,d]=iso.split('-'); return `${d}/${m}/${y}`; }
+        function getDataSelecionada() { return document.getElementById('filtroData').value; }
+
+        function tipoProduto(prod) {
+            const p = (prod||'').toLowerCase();
+            if (p.includes('45') || p.includes('p45')) return 'P45';
+            if (p.includes('vasilhame') && p.includes('gás') || p.includes('vasilhame') && p.includes('gas') || p.includes('completo') && (p.includes('gás')||p.includes('gas')||p.includes('botij'))) return 'GAS_COMPL';
+            if (p.includes('gás') || p.includes('gas') || p.includes('botij') || p.includes('13kg') || p.includes('carga')) return 'GAS13';
+            if (p.includes('vasilhame') && p.includes('água') || p.includes('vasilhame') && p.includes('agua') || p.includes('completa') && (p.includes('água')||p.includes('agua'))) return 'AGUA_COMPL';
+            if (p.includes('água') || p.includes('agua')) return 'AGUA';
+            return 'OUTRO';
+        }
+
+        function custoUnitario(tipo) {
+            if (tipo === 'GAS13') return custosPadrao.gas13;
+            if (tipo === 'P45') return custosPadrao.p45;
+            if (tipo === 'GAS_COMPL') return custosPadrao.vazGas;
+            if (tipo === 'AGUA') return custosPadrao.agua;
+            if (tipo === 'AGUA_COMPL') return custosPadrao.vazAgua;
+            return 0;
+        }
+
+        function normalizarPagamento(pag) {
+            const p = (pag||'').toUpperCase().trim();
+            if (p.includes('DINHEIRO')) return 'DINHEIRO';
+            if (p.includes('CRÉDITO') || p.includes('CREDITO') || p.includes('CREDIT')) return 'CREDITO';
+            if (p.includes('DÉBITO') || p.includes('DEBITO') || p.includes('DEBIT')) return 'DEBITO';
+            if (p.includes('PIX')) return 'PIX';
+            if (p.includes('ON LINE') || p.includes('ONLINE') || p.includes('APP')) return 'ONLINE';
+            if (p.includes('GAS DO POVO') || p.includes('GÁS DO POVO')) return 'GAS DO POVO';
+            if (p.includes('PRAZO') || p.includes('FIADO')) return 'A PRAZO';
+            return p || 'DINHEIRO';
+        }
+
+        function normalizarCanal(canal) {
+            return (canal||'').toUpperCase().trim();
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('cdToast');
+            t.textContent = msg || 'Dados salvos com sucesso! ✅';
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 3000);
+        }
+
+        // ========== INIT ==========
+        document.addEventListener('DOMContentLoaded', () => {
+            const hoje = new Date().toISOString().split('T')[0];
+            document.getElementById('filtroData').value = hoje;
+            document.getElementById('filtroData').addEventListener('change', () => recarregarTudo());
+            document.getElementById('inputBuscaVendas').addEventListener('input', aplicarFiltroTabela);
+            carregarConfiguracoes();
+            recarregarTudo();
+        });
+
+        // ========== NAVIGATION ==========
+        window.navegarDia = function(dir) {
+            const el = document.getElementById('filtroData');
+            const d = new Date(el.value + 'T12:00:00');
+            d.setDate(d.getDate() + dir);
+            el.value = d.toISOString().split('T')[0];
+            recarregarTudo();
+        };
+        window.irParaHoje = function() {
+            document.getElementById('filtroData').value = new Date().toISOString().split('T')[0];
+            recarregarTudo();
+        };
+
+        // ========== LOAD DATA ==========
+        async function carregarConfiguracoes() {
+            try {
+                const snap = await window.firebaseGet('configuracoes');
+                if (snap.exists()) {
+                    const cfg = snap.val();
+                    if (cfg.custos) {
+                        custosPadrao.gas13 = N(cfg.custos.gas13) || 85;
+                        custosPadrao.p45 = N(cfg.custos.p45) || 350;
+                        custosPadrao.vazGas = N(cfg.custos.vazGas) || 150;
+                        custosPadrao.agua = N(cfg.custos.agua) || 10;
+                        custosPadrao.vazAgua = N(cfg.custos.vazAgua) || 20;
+                    }
+                    if (cfg.taxas) {
+                        taxasCartao.credito = N(cfg.taxas.credito);
+                        taxasCartao.debito = N(cfg.taxas.debito);
+                        taxasCartao.pix = N(cfg.taxas.pix);
+                    }
+                    if (cfg.taxasApps) {
+                        taxasApps.appgas = N(cfg.taxasApps.appgas) || 10;
+                        taxasApps.precogas = N(cfg.taxasApps.precogas) || 8.40;
+                    }
+                }
+            } catch(e) { console.warn('Sem configurações salvas:', e); }
+            // Preencher inputs de custos
+            document.getElementById('inputValorCompraGas').value = custosPadrao.gas13.toFixed(2);
+            document.getElementById('inputValorCompraP45').value = custosPadrao.p45.toFixed(2);
+            document.getElementById('inputValorCompraVazGas').value = custosPadrao.vazGas.toFixed(2);
+            document.getElementById('inputValorCompraAgua').value = custosPadrao.agua.toFixed(2);
+            document.getElementById('inputValorCompraVazAgua').value = custosPadrao.vazAgua.toFixed(2);
+            // Taxas cartão
+            if (document.getElementById('inputTaxaCredito')) document.getElementById('inputTaxaCredito').value = taxasCartao.credito || '';
+            if (document.getElementById('inputTaxaDebito')) document.getElementById('inputTaxaDebito').value = taxasCartao.debito || '';
+            if (document.getElementById('inputTaxaPix')) document.getElementById('inputTaxaPix').value = taxasCartao.pix || '';
+            // Taxas apps
+            if (document.getElementById('inputTaxaAppGas')) document.getElementById('inputTaxaAppGas').value = taxasApps.appgas || '';
+            if (document.getElementById('inputTaxaPrecoGas')) document.getElementById('inputTaxaPrecoGas').value = taxasApps.precogas || '';
+        }
+
+        window.recarregarTudo = async function() {
+            const dataSel = getDataSelecionada();
+            if (!dataSel) return;
+
+            // Update labels
+            document.getElementById('lblDataTitulo').textContent = dataBR(dataSel);
+            document.getElementById('bannerDataGastos').textContent = dataBR(dataSel);
+            document.getElementById('badgeDataGastoRapido').textContent = dataBR(dataSel);
+            document.getElementById('tdPatioData').textContent = dataBR(dataSel);
+            document.getElementById('lblDataPatioMini').textContent = dataBR(dataSel);
+
+            // Read custos from inputs
+            custosPadrao.gas13 = N(document.getElementById('inputValorCompraGas').value) || 85;
+            custosPadrao.p45 = N(document.getElementById('inputValorCompraP45').value) || 350;
+            custosPadrao.vazGas = N(document.getElementById('inputValorCompraVazGas').value) || 150;
+            custosPadrao.agua = N(document.getElementById('inputValorCompraAgua').value) || 10;
+            custosPadrao.vazAgua = N(document.getElementById('inputValorCompraVazAgua').value) || 20;
+
+            try {
+                // Carregar pedidos
+                const snapPed = await window.firebaseGet('pedidos');
+                todosOsPedidos = snapPed.exists() ? snapPed.val() : {};
+
+                // Filtrar pedidos do dia
+                pedidosDoDia = [];
+                Object.entries(todosOsPedidos).forEach(([key, p]) => {
+                    const dtPedido = dataISO(p.data_pedido || p.data);
+                    if (dtPedido === dataSel && (p.status||'').toLowerCase() !== 'cancelado') {
+                        pedidosDoDia.push({ ...p, _key: key });
+                    }
+                });
+
+                // Carregar gastos
+                const snapGastos = await window.firebaseGet('gastos');
+                const allGastos = snapGastos.exists() ? snapGastos.val() : {};
+                gastosDoDia = [];
+                Object.entries(allGastos).forEach(([key, g]) => {
+                    const dtG = dataISO(g.data);
+                    if (dtG === dataSel) {
+                        gastosDoDia.push({ ...g, _key: key });
+                    }
+                });
+
+                // Carregar equipe
+                const snapEquipe = await window.firebaseGet('equipe');
+                equipe = snapEquipe.exists() ? snapEquipe.val() : {};
+
+                // Carregar fechamento do dia
+                const snapFech = await window.firebaseGet(`fechamento_dia/${dataSel}`);
+                fechamentoBancos = snapFech.exists() ? snapFech.val() : {};
+
+                // Carregar patio do dia
+                const snapPatio = await window.firebaseGet(`controle_patio/${dataSel}`);
+                controlePatio = snapPatio.exists() ? snapPatio.val() : {};
+
+                renderizarTudo();
+            } catch(e) {
+                console.error('Erro ao carregar dados:', e);
+            }
+        };
+
+        // ========== RENDER ==========
+        function renderizarTudo() {
+            renderizarTabelaVendas();
+            renderizarGastos();
+            renderizarPagamentos();
+            renderizarTaxasApps();
+            renderizarVerificacaoFinal();
+            renderizarDespesasDia();
+            renderizarFechamentoGas();
+            renderizarBancos();
+            renderizarFuncionarios();
+            renderizarPatioMini();
+        }
+
+        // ========== TABLE VENDAS ==========
+        function renderizarTabelaVendas() {
+            const tbody = document.getElementById('corpoTabelaVendasDia');
+            tbody.innerHTML = '';
+
+            if (pedidosDoDia.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color:#94a3b8; padding:30px;">Nenhuma venda encontrada para esta data.</td></tr>';
+                document.getElementById('badgeQtdVendas').textContent = '0 Vendas';
+                document.getElementById('metrTotalVendas').textContent = '0';
+                document.getElementById('metrTotalPago').textContent = R$(0);
+                document.getElementById('metrTotalCusto').textContent = R$(0);
+                document.getElementById('metrTotalMargem').textContent = R$(0);
+                // Footers
+                document.getElementById('footTotalItens').textContent = '0';
+                document.getElementById('footTotalPago').textContent = R$(0);
+                document.getElementById('footTotalCusto').textContent = R$(0);
+                document.getElementById('footTotalDiferenca').textContent = R$(0);
+                // Counters
+                document.getElementById('countProdGas13').textContent = '0';
+                document.getElementById('countProdP45').textContent = '0';
+                document.getElementById('countProdGasCompl').textContent = '0';
+                document.getElementById('countProdAgua').textContent = '0';
+                document.getElementById('countProdAguaCompl').textContent = '0';
+                return;
+            }
+
+            let totalPago = 0, totalCusto = 0, totalItens = 0;
+            let countGas13 = 0, countP45 = 0, countGasCompl = 0, countAgua = 0, countAguaCompl = 0;
+
+            // Sort by data/hora
+            pedidosDoDia.sort((a,b) => {
+                const da = a.data_pedido || a.data || '';
+                const db = b.data_pedido || b.data || '';
+                return da.localeCompare(db);
+            });
+
+            pedidosDoDia.forEach(p => {
+                const qtd = parseInt(p.quantidade) || 1;
+                const valor = N(p.valor);
+                const tp = tipoProduto(p.produto);
+                const custo = (p.custo_unitario ? N(p.custo_unitario) : custoUnitario(tp)) * qtd;
+                const dif = valor - custo;
+                const pagNorm = normalizarPagamento(p.pagamento || p.forma_pagamento);
+                const canal = p.canal || p.tipo_pedido || '';
+                const entregador = p.entregador || p.responsavel || '';
+                const endereco = p.endereco || p.local_entrega || '';
+                const dataHora = p.data_pedido || p.data || '';
+
+                totalPago += valor;
+                totalCusto += custo;
+                totalItens += qtd;
+
+                if (tp === 'GAS13') countGas13 += qtd;
+                else if (tp === 'P45') countP45 += qtd;
+                else if (tp === 'GAS_COMPL') countGasCompl += qtd;
+                else if (tp === 'AGUA') countAgua += qtd;
+                else if (tp === 'AGUA_COMPL') countAguaCompl += qtd;
+
+                const tr = document.createElement('tr');
+                tr.dataset.search = `${dataHora} ${p.cliente||''} ${entregador} ${p.produto||''} ${pagNorm} ${canal} ${endereco}`.toLowerCase();
+                tr.innerHTML = `
+                    <td style="font-size:11px; white-space:nowrap; font-weight:600;">${dataHora}</td>
+                    <td style="font-weight:700; font-size:12px;">${qtd}x ${p.produto||'?'}</td>
+                    <td style="font-weight:800; color:#27ae60;">${R$(valor)}</td>
+                    <td style="font-weight:700; color:#d35400; font-size:11.5px;">${R$(custo)}</td>
+                    <td style="font-weight:800; color:${dif>=0?'#0984e3':'#e74c3c'}; font-size:12px;">${R$(dif)}</td>
+                    <td><span class="badge-pag badge-${pagNorm.toLowerCase().replace(/ /g,'')}" style="font-size:10px; padding:3px 8px; border-radius:5px; font-weight:700;">${pagNorm}</span></td>
+                    <td style="font-size:11px; font-weight:600;">${canal}</td>
+                    <td style="font-size:11px;">${entregador}</td>
+                    <td style="font-size:10.5px; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${endereco}">${endereco}</td>
+                    <td style="text-align:center;">
+                        <button onclick="window.abrirModalEditarPedido('${p._key}')" style="background:none; border:none; cursor:pointer; font-size:14px;" title="Editar Venda">✏️</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // Update metrics
+            document.getElementById('badgeQtdVendas').textContent = `${pedidosDoDia.length} Vendas`;
+            document.getElementById('metrTotalVendas').textContent = pedidosDoDia.length;
+            document.getElementById('metrTotalPago').textContent = R$(totalPago);
+            document.getElementById('metrTotalCusto').textContent = R$(totalCusto);
+            document.getElementById('metrTotalMargem').textContent = R$(totalPago - totalCusto);
+            // Footers
+            document.getElementById('footTotalItens').textContent = totalItens;
+            document.getElementById('footTotalPago').textContent = R$(totalPago);
+            document.getElementById('footTotalCusto').textContent = R$(totalCusto);
+            document.getElementById('footTotalDiferenca').textContent = R$(totalPago - totalCusto);
+            // Counters
+            document.getElementById('countProdGas13').textContent = countGas13;
+            document.getElementById('countProdP45').textContent = countP45;
+            document.getElementById('countProdGasCompl').textContent = countGasCompl;
+            document.getElementById('countProdAgua').textContent = countAgua;
+            document.getElementById('countProdAguaCompl').textContent = countAguaCompl;
+        }
+
+        function aplicarFiltroTabela() {
+            const termo = (document.getElementById('inputBuscaVendas').value || '').toLowerCase();
+            document.querySelectorAll('#corpoTabelaVendasDia tr').forEach(tr => {
+                if (!tr.dataset.search) return;
+                tr.style.display = tr.dataset.search.includes(termo) ? '' : 'none';
+            });
+        }
+        window.limparBusca = function() {
+            document.getElementById('inputBuscaVendas').value = '';
+            aplicarFiltroTabela();
+        };
+
+        // ========== PAGAMENTOS ==========
+        function renderizarPagamentos() {
+            const totais = { DINHEIRO:0, CREDITO:0, DEBITO:0, PIX:0, ONLINE:0, 'GAS DO POVO':0, 'A PRAZO':0 };
+            pedidosDoDia.forEach(p => {
+                const pag = normalizarPagamento(p.pagamento || p.forma_pagamento);
+                const val = N(p.valor);
+                if (totais.hasOwnProperty(pag)) totais[pag] += val;
+                else totais['DINHEIRO'] += val;
+            });
+            const total = Object.values(totais).reduce((s,v) => s+v, 0);
+
+            // Read taxas from inputs
+            taxasCartao.credito = N(document.getElementById('inputTaxaCredito')?.value);
+            taxasCartao.debito = N(document.getElementById('inputTaxaDebito')?.value);
+            taxasCartao.pix = N(document.getElementById('inputTaxaPix')?.value);
+
+            const liqCredito = totais.CREDITO * (1 - taxasCartao.credito/100);
+            const liqDebito = totais.DEBITO * (1 - taxasCartao.debito/100);
+            const liqPix = totais.PIX * (1 - taxasCartao.pix/100);
+            const descTotalTaxas = (totais.CREDITO - liqCredito) + (totais.DEBITO - liqDebito) + (totais.PIX - liqPix);
+            const liqTotal = total - descTotalTaxas;
+
+            document.getElementById('valPagDinheiro').textContent = R$(totais.DINHEIRO);
+            document.getElementById('liqPagDinheiro').textContent = R$(totais.DINHEIRO);
+            document.getElementById('valPagCredito').textContent = R$(totais.CREDITO);
+            document.getElementById('liqPagCredito').textContent = R$(liqCredito);
+            document.getElementById('valPagDebito').textContent = R$(totais.DEBITO);
+            document.getElementById('liqPagDebito').textContent = R$(liqDebito);
+            document.getElementById('valPagPix').textContent = R$(totais.PIX);
+            document.getElementById('liqPagPix').textContent = R$(liqPix);
+            document.getElementById('valPagOnline').textContent = R$(totais.ONLINE);
+            document.getElementById('liqPagOnline').textContent = R$(totais.ONLINE);
+            document.getElementById('valPagGasPovo').textContent = R$(totais['GAS DO POVO']);
+            document.getElementById('liqPagGasPovo').textContent = R$(totais['GAS DO POVO']);
+            document.getElementById('valPagPrazo').textContent = R$(totais['A PRAZO']);
+            document.getElementById('liqPagPrazo').textContent = R$(totais['A PRAZO']);
+            document.getElementById('valPagTotal').textContent = R$(total);
+            document.getElementById('valTotalTaxasDesc').textContent = '- ' + R$(descTotalTaxas);
+            document.getElementById('liqPagTotal').textContent = R$(liqTotal);
+
+            // Show/hide desc
+            if (taxasCartao.credito > 0) { document.getElementById('descPagCredito').style.display='block'; document.getElementById('descPagCredito').textContent = `- ${R$(totais.CREDITO - liqCredito)} taxa`; }
+            if (taxasCartao.debito > 0) { document.getElementById('descPagDebito').style.display='block'; document.getElementById('descPagDebito').textContent = `- ${R$(totais.DEBITO - liqDebito)} taxa`; }
+            if (taxasCartao.pix > 0) { document.getElementById('descPagPix').style.display='block'; document.getElementById('descPagPix').textContent = `- ${R$(totais.PIX - liqPix)} taxa`; }
+
+            // Store for bancos
+            window._pagTotais = totais;
+            window._descTotalTaxas = descTotalTaxas;
+        }
+        window.atualizarTaxasInput = function() { renderizarPagamentos(); renderizarVerificacaoFinal(); renderizarDespesasDia(); renderizarFechamentoGas(); renderizarBancos(); };
+
+        // ========== TAXAS APPS ==========
+        function renderizarTaxasApps() {
+            taxasApps.appgas = N(document.getElementById('inputTaxaAppGas')?.value) || 10;
+            taxasApps.precogas = N(document.getElementById('inputTaxaPrecoGas')?.value) || 8.40;
+
+            let totalAppGas = 0, totalPrecoGas = 0, qtdPrecoGas = 0;
+            pedidosDoDia.forEach(p => {
+                const canal = normalizarCanal(p.canal || p.tipo_pedido);
+                const val = N(p.valor);
+                if (canal.includes('APPGAS') || canal.includes('APP GAS')) totalAppGas += val;
+                if (canal.includes('PRECO') || canal.includes('PREÇO')) { totalPrecoGas += val; qtdPrecoGas++; }
+            });
+
+            const taxaAppGasVal = totalAppGas * (taxasApps.appgas / 100);
+            const taxaPrecoGasVal = qtdPrecoGas * taxasApps.precogas;
+            const liqAppGas = totalAppGas - taxaAppGasVal;
+            const liqPrecoGas = totalPrecoGas - taxaPrecoGasVal;
+            const totalAppsBruto = totalAppGas + totalPrecoGas;
+            const totalAppsTaxas = taxaAppGasVal + taxaPrecoGasVal;
+            const totalAppsLiq = totalAppsBruto - totalAppsTaxas;
+
+            document.getElementById('valAppGasTotal').textContent = R$(totalAppGas);
+            document.getElementById('liqAppGasTotal').textContent = R$(liqAppGas);
+            document.getElementById('valPrecoGasTotal').textContent = R$(totalPrecoGas);
+            document.getElementById('qtdPrecoGasEntregas').textContent = `${qtdPrecoGas} entregas`;
+            document.getElementById('liqPrecoGasTotal').textContent = R$(liqPrecoGas);
+            document.getElementById('valTotalAppsBruto').textContent = R$(totalAppsBruto);
+            document.getElementById('valTotalAppsTaxasDesc').textContent = '- ' + R$(totalAppsTaxas);
+            document.getElementById('liqTotalAppsLiquido').textContent = R$(totalAppsLiq);
+
+            if (taxaAppGasVal > 0) { document.getElementById('descAppGasTotal').style.display='block'; document.getElementById('descAppGasTotal').textContent = `- ${R$(taxaAppGasVal)} taxa`; }
+            if (taxaPrecoGasVal > 0) { document.getElementById('descPrecoGasTotal').style.display='block'; document.getElementById('descPrecoGasTotal').textContent = `- ${R$(taxaPrecoGasVal)} taxa`; }
+
+            window._taxaAppGasVal = taxaAppGasVal;
+            window._taxaPrecoGasVal = taxaPrecoGasVal;
+            window._totalAppsTaxas = totalAppsTaxas;
+        }
+        window.atualizarTaxasAppsInput = function() { renderizarTaxasApps(); renderizarVerificacaoFinal(); renderizarDespesasDia(); renderizarFechamentoGas(); };
+
+        // ========== VERIFICAÇÃO FINAL ==========
+        function renderizarVerificacaoFinal() {
+            const t = window._pagTotais || {};
+            const reunido = (t.CREDITO||0) + (t.DEBITO||0) + (t.PIX||0);
+            document.getElementById('vfValorReunido').textContent = R$(reunido);
+            document.getElementById('vfValorDinheiro').textContent = R$(t.DINHEIRO||0);
+            document.getElementById('vfValorOnline').textContent = R$(t.ONLINE||0);
+            document.getElementById('vfValorGasPovo').textContent = R$(t['GAS DO POVO']||0);
+            document.getElementById('vfValorPrazo').textContent = R$(t['A PRAZO']||0);
+            if ((t['A PRAZO']||0) > 0) document.getElementById('vfRowPrazo').style.display = '';
+
+            document.getElementById('vfDescAppGas').textContent = '- ' + R$(window._taxaAppGasVal||0);
+            document.getElementById('vfDescPrecoGas').textContent = '- ' + R$(window._taxaPrecoGasVal||0);
+            document.getElementById('vfDescPrecoGasLabel').textContent = `Taxa Preço do Gás (R$ ${(taxasApps.precogas||0).toFixed(2)} / ped)`;
+
+            const totalVF = (t.DINHEIRO||0) + reunido + (t.ONLINE||0) + (t['GAS DO POVO']||0) + (t['A PRAZO']||0) - (window._taxaAppGasVal||0) - (window._taxaPrecoGasVal||0);
+            document.getElementById('vfValorTotal').textContent = R$(totalVF);
+        }
+
+        // ========== DESPESAS DIA ==========
+        function renderizarDespesasDia() {
+            const totalGastos = gastosDoDia.reduce((s,g) => s + N(g.valor), 0);
+            const totalTaxasCartao = window._descTotalTaxas || 0;
+            const totalTaxasApps = window._totalAppsTaxas || 0;
+            const totalFinal = totalGastos + totalTaxasCartao + totalTaxasApps;
+
+            document.getElementById('tdDespQtdGastos').textContent = `${gastosDoDia.length} lanç.`;
+            document.getElementById('tdDespValGastos').textContent = R$(totalGastos);
+            document.getElementById('tdDespValTaxasCartao').textContent = R$(totalTaxasCartao);
+            document.getElementById('tdDespValApps').textContent = R$(totalTaxasApps);
+            document.getElementById('tdDespValTotalFinal').textContent = R$(totalFinal);
+
+            window._totalDespesas = totalFinal;
+            window._totalGastos = totalGastos;
+        }
+
+        // ========== FECHAMENTO GÁS ==========
+        function renderizarFechamentoGas() {
+            let totalVenda = 0, totalCusto = 0;
+            pedidosDoDia.forEach(p => {
+                totalVenda += N(p.valor);
+                const tp = tipoProduto(p.produto);
+                const qtd = parseInt(p.quantidade) || 1;
+                totalCusto += (p.custo_unitario ? N(p.custo_unitario) : custoUnitario(tp)) * qtd;
+            });
+            const despesas = window._totalDespesas || 0;
+            const margem = totalVenda - totalCusto;
+            const lucro = margem - despesas;
+
+            document.getElementById('fgValorVenda').textContent = totalVenda.toFixed(2).replace('.', ',');
+            document.getElementById('fgValorCompra').textContent = totalCusto.toFixed(2).replace('.', ',');
+            document.getElementById('fgValorDespesas').textContent = despesas.toFixed(2).replace('.', ',');
+            document.getElementById('fgValorMargemBruta').textContent = margem.toFixed(2).replace('.', ',');
+            document.getElementById('fgValorLucroReal').textContent = lucro.toFixed(2).replace('.', ',');
+        }
+
+        // ========== BANCOS ==========
+        function renderizarBancos() {
+            const t = window._pagTotais || {};
+            const taxas = window._descTotalTaxas || 0;
+            const entradasMP = (t.CREDITO||0) + (t.DEBITO||0) + (t.PIX||0) - taxas;
+            const entradasCaixa = t.DINHEIRO || 0;
+
+            // Despesas pagas por PIX/Banco (gastos marcados como PIX, Débito, Crédito)
+            let saidasMP = 0, saidasCaixa = 0;
+            gastosDoDia.forEach(g => {
+                const pag = (g.pagamento||'').toUpperCase();
+                const val = N(g.valor);
+                if (pag.includes('DINHEIRO')) saidasCaixa += val;
+                else saidasMP += val;
+            });
+
+            document.getElementById('mpEntradasApuradas').textContent = R$(entradasMP);
+            document.getElementById('mpSaidasApuradas').textContent = '- ' + R$(saidasMP);
+            document.getElementById('caixaEntradasApuradas').textContent = R$(entradasCaixa);
+            document.getElementById('caixaSaidasApuradas').textContent = '- ' + R$(saidasCaixa);
+
+            // Load saved values
+            if (fechamentoBancos.mpInicio != null) document.getElementById('mpInicio').value = fechamentoBancos.mpInicio;
+            if (fechamentoBancos.mpFinal != null) document.getElementById('mpFinal').value = fechamentoBancos.mpFinal;
+            if (fechamentoBancos.caixaInicio != null) document.getElementById('caixaInicio').value = fechamentoBancos.caixaInicio;
+            if (fechamentoBancos.caixaFinal != null) document.getElementById('caixaFinal').value = fechamentoBancos.caixaFinal;
+
+            calcDifsBancos();
+        }
+
+        window.calcDifsBancos = function() {
+            const t = window._pagTotais || {};
+            const taxas = window._descTotalTaxas || 0;
+            const entradasMP = (t.CREDITO||0) + (t.DEBITO||0) + (t.PIX||0) - taxas;
+            const entradasCaixa = t.DINHEIRO || 0;
+            let saidasMP = 0, saidasCaixa = 0;
+            gastosDoDia.forEach(g => {
+                const pag = (g.pagamento||'').toUpperCase();
+                if (pag.includes('DINHEIRO')) saidasCaixa += N(g.valor);
+                else saidasMP += N(g.valor);
+            });
+
+            const mpI = N(document.getElementById('mpInicio').value);
+            const mpCalc = mpI + entradasMP - saidasMP;
+            const mpF = N(document.getElementById('mpFinal').value);
+            const mpDif = mpCalc - mpF;
+
+            const cxI = N(document.getElementById('caixaInicio').value);
+            const cxCalc = cxI + entradasCaixa - saidasCaixa;
+            const cxF = N(document.getElementById('caixaFinal').value);
+            const cxDif = cxCalc - cxF;
+
+            document.getElementById('mpFinalCalculado').textContent = R$(mpCalc);
+            document.getElementById('mpDif').textContent = R$(mpDif);
+            document.getElementById('mpDif').style.color = Math.abs(mpDif) < 0.01 ? '#27ae60' : '#e74c3c';
+            document.getElementById('caixaFinalCalculado').textContent = R$(cxCalc);
+            document.getElementById('caixaDif').textContent = R$(cxDif);
+            document.getElementById('caixaDif').style.color = Math.abs(cxDif) < 0.01 ? '#27ae60' : '#e74c3c';
+
+            const totalSaldo = mpF + cxF;
+            document.getElementById('bancoTotalSaldoGeral').textContent = R$(totalSaldo);
+            document.getElementById('bancoTotalVendasCount').textContent = pedidosDoDia.length;
+        };
+
+        // ========== GASTOS ==========
+        function renderizarGastos() {
+            const tbody = document.getElementById('corpoTabelaGastosDia');
+            tbody.innerHTML = '';
+            const totalGastos = gastosDoDia.reduce((s,g) => s + N(g.valor), 0);
+            document.getElementById('bannerTotalGastos').textContent = 'Gastos: ' + R$(totalGastos);
+
+            if (gastosDoDia.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#94a3b8; padding:12px;">Nenhum gasto registrado nesta data.</td></tr>';
+                return;
+            }
+
+            gastosDoDia.forEach(g => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="font-weight:700; font-size:12px;">${g.descricao||g.nome||'--'}</td>
+                    <td style="font-size:11px;">${g.grupo||g.categoria||'--'}</td>
+                    <td style="font-size:11px;">${g.pagamento||'--'}</td>
+                    <td style="text-align:right; font-weight:800; color:#e74c3c;">${R$(N(g.valor))}</td>
+                    <td style="text-align:center;">
+                        <button onclick="window.excluirGasto('${g._key}')" style="background:none; border:none; cursor:pointer; font-size:12px;" title="Excluir gasto">🗑️</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        window.salvarGastoRapido = async function(e) {
+            e.preventDefault();
+            const dataSel = getDataSelecionada();
+            const desc = document.getElementById('qgDescricao').value.trim();
+            const val = N(document.getElementById('qgValor').value);
+            const pag = document.getElementById('qgPagamento').value;
+            const grupo = document.getElementById('qgGrupo').value;
+            if (!desc || val <= 0) { alert('Preencha descrição e valor.'); return; }
+
+            const gasto = {
+                data: dataBR(dataSel),
+                descricao: desc,
+                valor: val,
+                pagamento: pag,
+                grupo: grupo,
+                criado_em: new Date().toISOString()
+            };
+
+            try {
+                await window.firebasePush('gastos', gasto);
+                showToast('Gasto lançado com sucesso! ✅');
+                document.getElementById('formGastoRapido').reset();
+                recarregarTudo();
+            } catch(er) {
+                alert('Erro ao salvar gasto: ' + er.message);
+            }
+        };
+
+        window.excluirGasto = async function(key) {
+            if (!confirm('Tem certeza que deseja excluir este gasto?')) return;
+            try {
+                await window.firebaseRemove(`gastos/${key}`);
+                showToast('Gasto excluído! 🗑️');
+                recarregarTudo();
+            } catch(e) { alert('Erro ao excluir: ' + e.message); }
+        };
+
+        window.focarGastoRapido = function() {
+            document.getElementById('qgDescricao').focus();
+        };
+
+        // ========== FUNCIONARIOS ==========
+        function renderizarFuncionarios() {
+            const container = document.getElementById('containerPorFuncionario');
+            const por = {};
+            pedidosDoDia.forEach(p => {
+                const nome = p.entregador || p.responsavel || 'Sem Entregador';
+                if (!por[nome]) por[nome] = { qtd: 0, total: 0 };
+                por[nome].qtd += parseInt(p.quantidade) || 1;
+                por[nome].total += N(p.valor);
+            });
+
+            const nomes = Object.keys(por).sort();
+            document.getElementById('badgeQtdFuncionarios').textContent = `${nomes.length} Colaboradores`;
+
+            if (nomes.length === 0) {
+                container.innerHTML = '<div style="text-align:center; padding:20px; color:#94a3b8;">Nenhuma entrega registrada.</div>';
+                return;
+            }
+
+            let html = '';
+            nomes.forEach(nome => {
+                const f = por[nome];
+                html += `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 14px; border-bottom:1px solid #edf2f7;">
+                    <div>
+                        <span style="font-weight:800; font-size:13px;">${nome}</span>
+                        <span style="margin-left:8px; font-size:11px; color:#64748b; font-weight:600;">${f.qtd} entregas</span>
+                    </div>
+                    <span style="font-weight:800; color:#27ae60; font-size:13px;">${R$(f.total)}</span>
+                </div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        // ========== PATIO MINI ==========
+        function renderizarPatioMini() {
+            if (controlePatio.gas_vazio_in != null) document.getElementById('patioBotijaoVazioInicio').value = controlePatio.gas_vazio_in;
+            if (controlePatio.gas_cheio_in != null) document.getElementById('patioBotijaoCheioInicio').value = controlePatio.gas_cheio_in;
+            if (controlePatio.gas_recebido != null) document.getElementById('patioGasRecebidos').value = controlePatio.gas_recebido;
+
+            // Venda gás completo (vasilhame)
+            let gasCompl = 0;
+            pedidosDoDia.forEach(p => { if (tipoProduto(p.produto) === 'GAS_COMPL') gasCompl += parseInt(p.quantidade) || 1; });
+            document.getElementById('tdPatioGasCompleto').textContent = gasCompl;
+
+            // Venda gás total (sem água)
+            let vendaGas = 0;
+            pedidosDoDia.forEach(p => {
+                const tp = tipoProduto(p.produto);
+                if (tp === 'GAS13' || tp === 'GAS_COMPL' || tp === 'P45') vendaGas += parseInt(p.quantidade) || 1;
+            });
+            document.getElementById('tdPatioVendaGasDia').textContent = vendaGas;
+
+            calcPatioMiniAuto();
+        }
+
+        window.calcPatioMiniAuto = function() {
+            const vazIn = N(document.getElementById('patioBotijaoVazioInicio').value);
+            const cheioIn = N(document.getElementById('patioBotijaoCheioInicio').value);
+            const recebidos = N(document.getElementById('patioGasRecebidos').value);
+            const vendaGas = parseInt(document.getElementById('tdPatioVendaGasDia').textContent) || 0;
+
+            const posCheio = cheioIn + recebidos;
+            const posVazio = vazIn - recebidos;
+
+            document.getElementById('patioPosRecebimentoCheio').value = posCheio;
+            document.getElementById('patioPosRecebimentoVazio').value = posVazio;
+
+            const fimVazio = posVazio + vendaGas;
+            const fimCheio = posCheio - vendaGas;
+            const totalPatio = fimVazio + fimCheio;
+
+            document.getElementById('patioBotijaoVazioFinal').value = fimVazio;
+            document.getElementById('patioBotijaoCheioFinal').value = fimCheio;
+            document.getElementById('patioQtdBotijaoPatio').value = totalPatio;
+        };
+
+        // ========== SAVES ==========
+        window.salvarCustosCompra = async function() {
+            custosPadrao.gas13 = N(document.getElementById('inputValorCompraGas').value);
+            custosPadrao.p45 = N(document.getElementById('inputValorCompraP45').value);
+            custosPadrao.vazGas = N(document.getElementById('inputValorCompraVazGas').value);
+            custosPadrao.agua = N(document.getElementById('inputValorCompraAgua').value);
+            custosPadrao.vazAgua = N(document.getElementById('inputValorCompraVazAgua').value);
+            try {
+                await window.firebaseUpdate('configuracoes/custos', custosPadrao);
+                showToast('Custos salvos! ✅');
+                renderizarTudo();
+            } catch(e) { alert('Erro: ' + e.message); }
+        };
+
+        window.salvarTaxasCartao = async function() {
+            taxasCartao.credito = N(document.getElementById('inputTaxaCredito')?.value);
+            taxasCartao.debito = N(document.getElementById('inputTaxaDebito')?.value);
+            taxasCartao.pix = N(document.getElementById('inputTaxaPix')?.value);
+            try {
+                await window.firebaseUpdate('configuracoes/taxas', taxasCartao);
+                showToast('Taxas de cartão salvas! ✅');
+            } catch(e) { alert('Erro: ' + e.message); }
+        };
+
+        window.salvarTaxasApps = async function() {
+            taxasApps.appgas = N(document.getElementById('inputTaxaAppGas')?.value);
+            taxasApps.precogas = N(document.getElementById('inputTaxaPrecoGas')?.value);
+            try {
+                await window.firebaseUpdate('configuracoes/taxasApps', taxasApps);
+                showToast('Taxas de apps salvas! ✅');
+            } catch(e) { alert('Erro: ' + e.message); }
+        };
+
+        window.salvarFechamentoBancos = async function() {
+            const dataSel = getDataSelecionada();
+            const data = {
+                mpInicio: N(document.getElementById('mpInicio').value),
+                mpFinal: N(document.getElementById('mpFinal').value),
+                caixaInicio: N(document.getElementById('caixaInicio').value),
+                caixaFinal: N(document.getElementById('caixaFinal').value),
+                salvo_em: new Date().toISOString()
+            };
+            try {
+                await window.firebaseSet(`fechamento_dia/${dataSel}`, data);
+                showToast('Fechamento salvo! ✅');
+            } catch(e) { alert('Erro: ' + e.message); }
+        };
+
+        window.salvarMovimentacaoDiaPatio = async function() {
+            const dataSel = getDataSelecionada();
+            const data = {
+                gas_vazio_in: N(document.getElementById('patioBotijaoVazioInicio').value),
+                gas_cheio_in: N(document.getElementById('patioBotijaoCheioInicio').value),
+                gas_recebido: N(document.getElementById('patioGasRecebidos').value),
+                gas_venda: parseInt(document.getElementById('tdPatioVendaGasDia').textContent) || 0
+            };
+            try {
+                await window.firebaseUpdate(`controle_patio/${dataSel}`, data);
+                showToast('Pátio salvo! ✅');
+            } catch(e) { alert('Erro: ' + e.message); }
+        };
+
+        window.recalcularCompraGas = function() {
+            const qtd = N(document.getElementById('cpgQtdComprada').value);
+            const unit = N(document.getElementById('cpgValorUnidade').value);
+            document.getElementById('cpgValorTotalPreview').textContent = R$(qtd * unit);
+        };
+
+        window.salvarControlePagamentoGas = async function() {
+            const dataSel = getDataSelecionada();
+            const data = {
+                dataCompra: document.getElementById('cpgDataCompra').value,
+                qtdComprada: N(document.getElementById('cpgQtdComprada').value),
+                valorUnidade: N(document.getElementById('cpgValorUnidade').value),
+                valorTotal: N(document.getElementById('cpgQtdComprada').value) * N(document.getElementById('cpgValorUnidade').value),
+                dataBoleto: document.getElementById('cpgDataBoleto').value,
+                dataPagamento: document.getElementById('cpgDataPagamento').value,
+                statusBoleto: document.getElementById('cpgStatusBoleto').value,
+                salvo_em: new Date().toISOString()
+            };
+            try {
+                await window.firebasePush('compras_gas', data);
+                showToast('Pagamento de gás salvo! ✅');
+            } catch(e) { alert('Erro: ' + e.message); }
+        };
+
+        // ========== MODAL EDITAR PEDIDO ==========
+        window.abrirModalEditarPedido = function(key) {
+            editandoPedidoKey = key;
+            const p = todosOsPedidos[key];
+            if (!p) { alert('Pedido não encontrado.'); return; }
+
+            document.getElementById('editPedidoId').value = key;
+            document.getElementById('editPedidoValor').value = N(p.valor);
+            document.getElementById('editPedidoCusto').value = p.custo_unitario || '';
+            document.getElementById('editPedidoQtd').value = p.quantidade || 1;
+            document.getElementById('editPedidoProduto').value = p.produto || '';
+            document.getElementById('editPedidoPagamento').value = normalizarPagamento(p.pagamento || p.forma_pagamento);
+            document.getElementById('editPedidoCanal').value = p.canal || p.tipo_pedido || '';
+            document.getElementById('editPedidoStatus').value = p.status || 'Concluída';
+            document.getElementById('editPedidoData').value = p.data_pedido || p.data || '';
+            document.getElementById('editPedidoCliente').value = p.cliente || p.nome || '';
+            document.getElementById('editPedidoTelefone').value = p.telefone || '';
+            document.getElementById('editPedidoEndereco').value = p.endereco || p.local_entrega || '';
+            document.getElementById('editPedidoObs').value = p.observacoes || p.obs || '';
+
+            // Preencher entregadores
+            const selEntr = document.getElementById('editPedidoEntregador');
+            selEntr.innerHTML = '<option value="">Sem entregador</option>';
+            Object.values(equipe).forEach(e => {
+                const op = document.createElement('option');
+                op.value = e.nome || e.name || '';
+                op.textContent = e.nome || e.name || '';
+                selEntr.appendChild(op);
+            });
+            selEntr.value = p.entregador || p.responsavel || '';
+
+            // Preview
+            const tp = tipoProduto(p.produto);
+            const qtd = parseInt(p.quantidade) || 1;
+            const custo = (p.custo_unitario ? N(p.custo_unitario) : custoUnitario(tp)) * qtd;
+            document.getElementById('editPreviewValor').textContent = R$(N(p.valor));
+            document.getElementById('editPreviewCusto').textContent = R$(custo);
+            document.getElementById('editPreviewMargem').textContent = R$(N(p.valor) - custo);
+
+            document.getElementById('cdModalEditarPedido').style.display = 'flex';
+        };
+
+        window.fecharModalEditarPedido = function() {
+            document.getElementById('cdModalEditarPedido').style.display = 'none';
+        };
+
+        window.salvarEdicaoPedido = async function() {
+            const key = document.getElementById('editPedidoId').value;
+            if (!key) return;
+
+            const updates = {
+                valor: N(document.getElementById('editPedidoValor').value),
+                quantidade: parseInt(document.getElementById('editPedidoQtd').value) || 1,
+                produto: document.getElementById('editPedidoProduto').value,
+                pagamento: document.getElementById('editPedidoPagamento').value,
+                forma_pagamento: document.getElementById('editPedidoPagamento').value,
+                canal: document.getElementById('editPedidoCanal').value,
+                tipo_pedido: document.getElementById('editPedidoCanal').value,
+                status: document.getElementById('editPedidoStatus').value,
+                data_pedido: document.getElementById('editPedidoData').value,
+                cliente: document.getElementById('editPedidoCliente').value,
+                nome: document.getElementById('editPedidoCliente').value,
+                telefone: document.getElementById('editPedidoTelefone').value,
+                entregador: document.getElementById('editPedidoEntregador').value,
+                responsavel: document.getElementById('editPedidoEntregador').value,
+                endereco: document.getElementById('editPedidoEndereco').value,
+                local_entrega: document.getElementById('editPedidoEndereco').value,
+                observacoes: document.getElementById('editPedidoObs').value
+            };
+            const custoInput = document.getElementById('editPedidoCusto').value;
+            if (custoInput) updates.custo_unitario = N(custoInput);
+
+            try {
+                await window.firebaseUpdate(`pedidos/${key}`, updates);
+                showToast('Venda atualizada! ✅');
+                fecharModalEditarPedido();
+                recarregarTudo();
+            } catch(e) { alert('Erro: ' + e.message); }
+        };
+
+        // ========== MODAL DETALHES (PAGAMENTO) ==========
+        window.abrirModalPagamento = function(tipo) {
+            const modal = document.getElementById('cdModalDetalhes');
+            const titulo = document.getElementById('cdModalTitulo');
+            const corpo = document.getElementById('cdModalCorpo');
+
+            let filtrados = [];
+            if (tipo === 'TODOS') {
+                filtrados = pedidosDoDia;
+                titulo.textContent = '📋 Todas as Vendas do Dia';
+            } else if (tipo === 'REUNIDO') {
+                filtrados = pedidosDoDia.filter(p => ['CREDITO','DEBITO','PIX'].includes(normalizarPagamento(p.pagamento||p.forma_pagamento)));
+                titulo.textContent = '📋 Crédito + Débito + PIX';
+            } else {
+                filtrados = pedidosDoDia.filter(p => normalizarPagamento(p.pagamento||p.forma_pagamento) === tipo);
+                titulo.textContent = `📋 Vendas - ${tipo}`;
+            }
+
+            let total = 0;
+            let html = '<table style="width:100%; border-collapse:collapse; font-size:12px;">';
+            html += '<thead><tr style="background:#f1f5f9;"><th style="padding:8px;">Cliente</th><th>Produto</th><th>Valor</th><th>Pagamento</th></tr></thead><tbody>';
+            filtrados.forEach(p => {
+                const val = N(p.valor);
+                total += val;
+                html += `<tr style="border-bottom:1px solid #eee;">
+                    <td style="padding:6px;">${p.cliente||p.nome||'--'}</td>
+                    <td>${(p.quantidade||1)}x ${p.produto||'?'}</td>
+                    <td style="font-weight:700; color:#27ae60;">${R$(val)}</td>
+                    <td>${p.pagamento||p.forma_pagamento||'--'}</td>
+                </tr>`;
+            });
+            html += `</tbody><tfoot><tr style="background:#e8f5e9; font-weight:800;"><td style="padding:8px;">TOTAL</td><td>${filtrados.length} vendas</td><td style="color:#27ae60;">${R$(total)}</td><td></td></tr></tfoot></table>`;
+            corpo.innerHTML = html;
+            modal.style.display = 'flex';
+        };
+
+        window.abrirModalCanalApp = function(tipo) {
+            // Reuse payment modal for apps
+            window.abrirModalPagamento('TODOS');
+        };
+
+        window.fecharModalDetalhes = function() {
+            document.getElementById('cdModalDetalhes').style.display = 'none';
+        };
+
+        window.abrirModalGastosDia = function() {
+            const modal = document.getElementById('cdModalDetalhes');
+            document.getElementById('cdModalTitulo').textContent = '💸 Gastos do Dia';
+            let html = '<table style="width:100%; border-collapse:collapse; font-size:12px;">';
+            html += '<thead><tr style="background:#f1f5f9;"><th style="padding:8px;">Descrição</th><th>Pagamento</th><th>Valor</th></tr></thead><tbody>';
+            let total = 0;
+            gastosDoDia.forEach(g => {
+                const v = N(g.valor);
+                total += v;
+                html += `<tr style="border-bottom:1px solid #eee;"><td style="padding:6px;">${g.descricao||'--'}</td><td>${g.pagamento||'--'}</td><td style="font-weight:700; color:#e74c3c;">${R$(v)}</td></tr>`;
+            });
+            html += `</tbody><tfoot><tr style="background:#fff3e0; font-weight:800;"><td style="padding:8px;">TOTAL</td><td>${gastosDoDia.length} lanç.</td><td style="color:#e74c3c;">${R$(total)}</td></tr></tfoot></table>`;
+            document.getElementById('cdModalCorpo').innerHTML = html;
+            modal.style.display = 'flex';
+        };
+
+        // Stub for modals not fully implemented
+        window.abrirModalDespesasDia = function() { window.abrirModalGastosDia(); };
+        window.abrirModalDespesasDiaItem = function() { window.abrirModalGastosDia(); };
+        window.abrirModalLucroRealDetalhes = function() { window.abrirModalPagamento('TODOS'); };
+        window.abrirJustificativaBancos = function() {};
+        window.alternarModoMapaVisualControleDia = function() {};
+
+        // ========== EXCEL ==========
+        window.exportarExcelControleDia = function() {
+            const dataSel = getDataSelecionada();
+            const table = document.getElementById('tabelaVendasDia');
+            let html = table.outerHTML;
+            let url = 'data:application/vnd.ms-excel;base64,' + btoa(unescape(encodeURIComponent(html)));
+            let a = document.createElement('a');
+            a.href = url;
+            a.download = `ControleDia_${dataSel}.xls`;
+            a.click();
+        };
+
+    })();
+    </script>
     
 </body>
 
