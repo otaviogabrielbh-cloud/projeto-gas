@@ -522,7 +522,297 @@
         </div>
     </div>
 
-    
-</body>
+    <script>
+        // Variables
+        let dadosPatio = {};
+        let vendasSistema = {};
 
+        document.addEventListener("DOMContentLoaded", () => {
+            const hoje = new Date().toISOString().split("T")[0];
+            document.getElementById("cpDataInicio").value = hoje;
+            document.getElementById("cpDataFim").value = hoje;
+            gerarRelatorio();
+        });
+
+        async function gerarRelatorio() {
+            const dataInicio = document.getElementById("cpDataInicio").value;
+            const dataFim = document.getElementById("cpDataFim").value;
+            
+            if (!dataInicio || !dataFim) {
+                alert("Selecione as datas de início e fim.");
+                return;
+            }
+
+            document.getElementById("cpLoading").style.display = "block";
+            document.getElementById("cpTableWrapper").style.display = "none";
+            document.getElementById("cpEmpty").style.display = "none";
+            
+            // Formatar datas para exibir
+            const [aI, mI, dI] = dataInicio.split('-');
+            const [aF, mF, dF] = dataFim.split('-');
+            document.getElementById("lblPeriodo").textContent = `(${dI}/${mI}/${aI} até ${dF}/${mF}/${aF})`;
+
+            try {
+                // Fetch controle_patio
+                const patioSnapshot = await window.firebaseGet('controle_patio');
+                dadosPatio = patioSnapshot.exists() ? patioSnapshot.val() : {};
+
+                // Fetch pedidos
+                const pedidosSnapshot = await window.firebaseGet('pedidos');
+                const pedidos = pedidosSnapshot.exists() ? pedidosSnapshot.val() : {};
+
+                // Calcular vendas do sistema
+                vendasSistema = calcularVendasSistema(pedidos, dataInicio, dataFim);
+
+                renderizarTabela(dataInicio, dataFim);
+            } catch (e) {
+                console.error("Erro ao gerar relatorio:", e);
+                alert("Erro ao buscar dados do pátio.");
+            } finally {
+                document.getElementById("cpLoading").style.display = "none";
+            }
+        }
+
+        function calcularVendasSistema(pedidos, dtInicio, dtFim) {
+            const vendas = {};
+            const dI = new Date(dtInicio + "T00:00:00");
+            const dF = new Date(dtFim + "T23:59:59");
+
+            Object.values(pedidos).forEach(p => {
+                if (p.status !== 'Concluído') return;
+                // Extract date
+                let dt = p.data_pedido || p.data;
+                if (!dt) return;
+                
+                // Format dt to yyyy-mm-dd
+                let isoDate = converterParaDataISO(dt);
+                if (!isoDate) return;
+
+                const currentD = new Date(isoDate + "T12:00:00");
+                if (currentD >= dI && currentD <= dF) {
+                    if (!vendas[isoDate]) vendas[isoDate] = { gas: 0, agua: 0 };
+                    
+                    const prod = (p.produto || "").toLowerCase();
+                    const qtd = parseInt(p.quantidade) || 1;
+                    if (prod.includes("gás") || prod.includes("gas") || prod.includes("botij")) {
+                        vendas[isoDate].gas += qtd;
+                    } else if (prod.includes("água") || prod.includes("agua")) {
+                        vendas[isoDate].agua += qtd;
+                    }
+                }
+            });
+            return vendas;
+        }
+
+        function converterParaDataISO(dataStr) {
+            if (!dataStr) return null;
+            if (dataStr.includes('-')) {
+                const p = dataStr.split('-');
+                if (p[0].length === 4) return dataStr.trim(); // yyyy-mm-dd
+                if (p[2].length === 4) return `${p[2]}-${p[1]}-${p[0]}`; // dd-mm-yyyy
+            }
+            if (dataStr.includes('/')) {
+                const p = dataStr.split('/');
+                const year = p[2].length === 2 ? `20${p[2]}` : p[2];
+                return `${year}-${p[1]}-${p[0]}`; // dd/mm/yyyy
+            }
+            return null;
+        }
+
+        function formatDataBR(isoStr) {
+            if(!isoStr) return "";
+            const [y,m,d] = isoStr.split('-');
+            return `${d}/${m}/${y}`;
+        }
+
+        function getDatasNoPeriodo(inicio, fim) {
+            const arr = [];
+            let cur = new Date(inicio + "T12:00:00");
+            const end = new Date(fim + "T12:00:00");
+            while (cur <= end) {
+                arr.push(cur.toISOString().split("T")[0]);
+                cur.setDate(cur.getDate() + 1);
+            }
+            return arr;
+        }
+
+        function renderizarTabela(dtInicio, dtFim) {
+            const tbody = document.getElementById("cpTableBody");
+            tbody.innerHTML = "";
+            
+            const datas = getDatasNoPeriodo(dtInicio, dtFim);
+            
+            if (datas.length === 0) {
+                document.getElementById("cpEmpty").style.display = "block";
+                return;
+            }
+
+            document.getElementById("cpEmpty").style.display = "none";
+            document.getElementById("cpTableWrapper").style.display = "block";
+
+            let tGasSis = 0, tAguaSis = 0;
+
+            datas.forEach(dt => {
+                const vSis = vendasSistema[dt] || { gas: 0, agua: 0 };
+                const dp = dadosPatio[dt] || {
+                    gas_vazio_in: 0, gas_cheio_in: 0, gas_recebido: 0, gas_venda: 0,
+                    agua_cheia_in: 0, agua_vazia_in: 0, agua_venda: 0, agua_recebida: 0
+                };
+
+                tGasSis += vSis.gas;
+                tAguaSis += vSis.agua;
+
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td class="td-data">${formatDataBR(dt)}</td>
+                    
+                    <!-- GÁS -->
+                    <td class="val-auto azul">${vSis.gas}</td>
+                    <td><input type="number" class="cp-input input-num gas-vazio-in" data-dt="${dt}" value="${dp.gas_vazio_in || ''}" oninput="calcLinha(this)"></td>
+                    <td><input type="number" class="cp-input input-num gas-cheio-in" data-dt="${dt}" value="${dp.gas_cheio_in || ''}" oninput="calcLinha(this)"></td>
+                    <td><input type="number" class="cp-input input-num gas-recebido" data-dt="${dt}" value="${dp.gas_recebido || ''}" oninput="calcLinha(this)"></td>
+                    <td><input type="number" class="cp-input input-num gas-venda" data-dt="${dt}" value="${dp.gas_venda || ''}" oninput="calcLinha(this)"></td>
+                    <td class="val-auto gas-pos-cheio">0</td>
+                    <td class="val-auto gas-pos-vazio">0</td>
+                    <td class="val-auto gas-fim-vazio">0</td>
+                    <td class="val-auto gas-fim-cheio">0</td>
+                    <td class="val-auto roxo gas-total">0</td>
+
+                    <!-- ÁGUA -->
+                    <td class="val-auto ciano">${vSis.agua}</td>
+                    <td><input type="number" class="cp-input input-num agua-cheia-in" data-dt="${dt}" value="${dp.agua_cheia_in || ''}" oninput="calcLinha(this)"></td>
+                    <td><input type="number" class="cp-input input-num agua-vazia-in" data-dt="${dt}" value="${dp.agua_vazia_in || ''}" oninput="calcLinha(this)"></td>
+                    <td><input type="number" class="cp-input input-num agua-venda" data-dt="${dt}" value="${dp.agua_venda || ''}" oninput="calcLinha(this)"></td>
+                    <td><input type="number" class="cp-input input-num agua-recebida" data-dt="${dt}" value="${dp.agua_recebida || ''}" oninput="calcLinha(this)"></td>
+                    <td class="val-auto agua-fim-vazia">0</td>
+                    <td class="val-auto agua-fim-cheia">0</td>
+                    <td class="val-auto roxo agua-total">0</td>
+                `;
+                tbody.appendChild(tr);
+                
+                // Calc initial values
+                calcLinha(tr.querySelector('.gas-vazio-in'));
+            });
+
+            // Add Total Row
+            const trTot = document.createElement("tr");
+            trTot.className = "row-total";
+            trTot.innerHTML = `
+                <td>TOTAIS</td>
+                <td class="azul">${tGasSis}</td>
+                <td colspan="9" style="color:var(--text-light); font-size:11px; text-align:left; padding-left:15px;">Métricas consolidadas de Gás no período acima</td>
+                <td class="ciano">${tAguaSis}</td>
+                <td colspan="7" style="color:var(--text-light); font-size:11px; text-align:left; padding-left:15px;">Métricas consolidadas de Água no período acima</td>
+            `;
+            tbody.appendChild(trTot);
+        }
+
+        window.calcLinha = function(el) {
+            const tr = el.closest('tr');
+            if (!tr) return;
+
+            // Gás
+            const gVazioIn = parseInt(tr.querySelector('.gas-vazio-in').value) || 0;
+            const gCheioIn = parseInt(tr.querySelector('.gas-cheio-in').value) || 0;
+            const gRecebidos = parseInt(tr.querySelector('.gas-recebido').value) || 0;
+            const gVenda = parseInt(tr.querySelector('.gas-venda').value) || 0;
+
+            const gPosCheio = gCheioIn + gRecebidos;
+            const gPosVazio = gVazioIn - gRecebidos;
+            const gFimVazio = gPosVazio + gVenda;
+            const gFimCheio = gPosCheio - gVenda;
+            const gTotal = gFimVazio + gFimCheio;
+
+            tr.querySelector('.gas-pos-cheio').textContent = gPosCheio;
+            tr.querySelector('.gas-pos-vazio').textContent = gPosVazio;
+            tr.querySelector('.gas-fim-vazio').textContent = gFimVazio;
+            tr.querySelector('.gas-fim-cheio').textContent = gFimCheio;
+            tr.querySelector('.gas-total').textContent = gTotal;
+
+            // Água
+            const aCheiaIn = parseInt(tr.querySelector('.agua-cheia-in').value) || 0;
+            const aVaziaIn = parseInt(tr.querySelector('.agua-vazia-in').value) || 0;
+            const aVenda = parseInt(tr.querySelector('.agua-venda').value) || 0;
+            const aRecebida = parseInt(tr.querySelector('.agua-recebida').value) || 0;
+
+            const aFimVazia = aVaziaIn - aRecebida + aVenda;
+            const aFimCheia = aCheiaIn + aRecebida - aVenda;
+            const aTotal = aFimVazia + aFimCheia;
+
+            tr.querySelector('.agua-fim-vazia').textContent = aFimVazia;
+            tr.querySelector('.agua-fim-cheia').textContent = aFimCheia;
+            tr.querySelector('.agua-total').textContent = aTotal;
+        }
+
+        window.salvarDadosManuais = async function() {
+            const btn = document.querySelector('.btn-salvar-cp');
+            const oldHtml = btn.innerHTML;
+            btn.innerHTML = '💾 Salvando...';
+            btn.disabled = true;
+
+            try {
+                const inputs = document.querySelectorAll('#cpTableBody tr:not(.row-total)');
+                
+                // Prepare updates
+                const payload = {};
+                
+                inputs.forEach(tr => {
+                    const dtEl = tr.querySelector('.gas-vazio-in');
+                    if(!dtEl) return;
+                    const dt = dtEl.getAttribute('data-dt');
+                    if(!dt) return;
+
+                    const val = {
+                        gas_vazio_in: parseInt(tr.querySelector('.gas-vazio-in').value) || 0,
+                        gas_cheio_in: parseInt(tr.querySelector('.gas-cheio-in').value) || 0,
+                        gas_recebido: parseInt(tr.querySelector('.gas-recebido').value) || 0,
+                        gas_venda: parseInt(tr.querySelector('.gas-venda').value) || 0,
+                        agua_cheia_in: parseInt(tr.querySelector('.agua-cheia-in').value) || 0,
+                        agua_vazia_in: parseInt(tr.querySelector('.agua-vazia-in').value) || 0,
+                        agua_venda: parseInt(tr.querySelector('.agua-venda').value) || 0,
+                        agua_recebida: parseInt(tr.querySelector('.agua-recebida').value) || 0,
+                    };
+                    
+                    payload[dt] = val;
+                });
+
+                await window.firebaseUpdate('controle_patio', payload);
+
+                // Update local state
+                Object.assign(dadosPatio, payload);
+
+                const toast = document.getElementById("cpToast");
+                toast.classList.add('show');
+                setTimeout(() => { toast.classList.remove('show'); }, 3000);
+
+            } catch (e) {
+                console.error("Erro ao salvar:", e);
+                alert("Falha ao salvar dados.");
+            } finally {
+                btn.innerHTML = oldHtml;
+                btn.disabled = false;
+            }
+        }
+
+        window.exportarExcel = function() {
+            let table = document.getElementById("cpTable").cloneNode(true);
+            
+            // Fix input values before export
+            const originalInputs = document.getElementById("cpTable").querySelectorAll("input");
+            const clonedInputs = table.querySelectorAll("input");
+            originalInputs.forEach((inp, i) => {
+                if(clonedInputs[i]) {
+                    clonedInputs[i].setAttribute("value", inp.value);
+                }
+            });
+
+            let html = table.outerHTML;
+            let url = 'data:application/vnd.ms-excel;base64,' + btoa(unescape(encodeURIComponent(html)));
+            let a = document.createElement("a");
+            a.href = url;
+            a.download = `Controle_Patio_${document.getElementById("cpDataInicio").value}_a_${document.getElementById("cpDataFim").value}.xls`;
+            a.click();
+        }
+    </script>
+</body>
 </html>
