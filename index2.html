@@ -4500,19 +4500,31 @@
             const processarData = (str) => {
                 if (!str) return new Date(0);
                 try {
-                    // Tenta extrair DD, MM, YYYY e HH, MM, SS ignorando separadores estranhos
-                    const partes = str.match(/(\d+)/g);
-                    if (!partes || partes.length < 3) return new Date(0);
-
-                    const d = partes[0].padStart(2, '0');
-                    const m = partes[1].padStart(2, '0');
-                    const y = partes[2];
-                    const h = partes[3] || '00';
-                    const min = partes[4] || '00';
-                    const s = partes[5] || '00';
-
-                    // Retorna no formato ISO seguro para o construtor Date
-                    return new Date(`${y}-${m}-${d}T${h}:${min}:${s}`);
+                    if (typeof str === 'number') return new Date(str);
+                    const s = String(str).trim();
+                    if (s.includes('/')) {
+                        const partes = s.match(/(\d+)/g);
+                        if (!partes || partes.length < 3) return new Date(0);
+                        const d = partes[0].padStart(2, '0');
+                        const m = partes[1].padStart(2, '0');
+                        const y = partes[2].length === 2 ? '20' + partes[2] : partes[2];
+                        const h = (partes[3] || '00').padStart(2, '0');
+                        const min = (partes[4] || '00').padStart(2, '0');
+                        const sec = (partes[5] || '00').padStart(2, '0');
+                        return new Date(`${y}-${m}-${d}T${h}:${min}:${sec}`);
+                    } else if (s.includes('-')) {
+                        const partes = s.match(/(\d+)/g);
+                        if (!partes || partes.length < 3) return new Date(0);
+                        const y = partes[0].length === 2 ? '20' + partes[0] : partes[0];
+                        const m = partes[1].padStart(2, '0');
+                        const d = partes[2].padStart(2, '0');
+                        const h = (partes[3] || '00').padStart(2, '0');
+                        const min = (partes[4] || '00').padStart(2, '0');
+                        const sec = (partes[5] || '00').padStart(2, '0');
+                        return new Date(`${y}-${m}-${d}T${h}:${min}:${sec}`);
+                    }
+                    const dObj = new Date(str);
+                    return isNaN(dObj.getTime()) ? new Date(0) : dObj;
                 } catch (e) {
                     console.error("Erro no processarData:", e, "String recebida:", str);
                     return new Date(0);
