@@ -821,10 +821,514 @@
     </div>
 
     <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 
-    <!-- Firebase SDK (Modular) -->
-    
+    <!-- Script Principal do Mapa de Entregas -->
+    <script>
+    (function() {
+        // ========== ESTADO GLOBAL ==========
+        let map = null;
+        let markersEntregadores = null;
+        let markersPedidos = null;
+        let layerRotaSequencia = null;
+        let layerHistoricoGps = null;
+
+        let todosPedidos = {};
+        let statusEntregadores = {};
+        let equipeEntregadores = {};
+        let abaAtiva = 'entregadores';
+        let rotaAtivaBounds = null;
+
+        const CACHE_GEO_KEY = 'canoas_gas_geocache_v2';
+        let geoCache = {};
+        try { geoCache = JSON.parse(localStorage.getItem(CACHE_GEO_KEY) || '{}'); } catch(e) {}
+
+        // ========== PARSERS E HELPERS ==========
+        function dataISO(str) {
+            if (!str) return null;
+            str = String(str).trim();
+            if (str.includes('/')) {
+                const partes = str.match(/(\d+)/g);
+                if (partes && partes.length >= 3) {
+                    const d = partes[0].padStart(2, '0');
+                    const m = partes[1].padStart(2, '0');
+                    const y = partes[2].length === 2 ? '20' + partes[2] : partes[2];
+                    return `${y}-${m}-${d}`;
+                }
+            }
+            if (str.includes('-')) {
+                const partes = str.match(/(\d+)/g);
+                if (partes && partes.length >= 3) {
+                    if (partes[0].length === 4) {
+                        const y = partes[0];
+                        const m = partes[1].padStart(2, '0');
+                        const d = partes[2].padStart(2, '0');
+                        return `${y}-${m}-${d}`;
+                    } else if (partes[2].length === 4) {
+                        const d = partes[0].padStart(2, '0');
+                        const m = partes[1].padStart(2, '0');
+                        const y = partes[2];
+                        return `${y}-${m}-${d}`;
+                    }
+                }
+            }
+            return null;
+        }
+
+        function getDataSelecionada() {
+            const el = document.getElementById('filtroData');
+            return el ? el.value : new Date().toISOString().split('T')[0];
+        }
+
+        // ========== INICIALIZAÇÃO DO MAPA ==========
+        function initMap() {
+            if (map) return;
+            
+            // Ponto central padrão: Belo Horizonte / Região Betânia (Base Canoas Gás)
+            map = L.map('map', {
+                zoomControl: false
+            }).setView([-19.9673, -44.0084], 13);
+
+            L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors',
+                maxZoom: 19
+            }).addTo(map);
+
+            markersEntregadores = L.layerGroup().addTo(map);
+            markersPedidos = L.layerGroup().addTo(map);
+            layerRotaSequencia = L.layerGroup().addTo(map);
+            layerHistoricoGps = L.layerGroup().addTo(map);
+
+            // Redimensionamento seguro
+            setTimeout(() => map.invalidateSize(), 300);
+            window.addEventListener('resize', () => map.invalidateSize());
+        }
+
+        // ========== GEOCODIFICAÇÃO COM CACHE ==========
+        async function geocodificarEndereco(endereco) {
+            if (!endereco || typeof endereco !== 'string') return null;
+            const clean = endereco.trim().toUpperCase();
+            if (clean.length < 4) return null;
+
+            if (geoCache[clean]) return geoCache[clean];
+
+            try {
+                let url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(clean + ', Belo Horizonte, MG, Brasil')}`;
+                let resp = await fetch(url, { headers: { 'Accept-Language': 'pt-BR' } });
+                let data = await resp.json();
+
+                if (!data || data.length === 0) {
+                    url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(clean + ', Brasil')}`;
+                    resp = await fetch(url, { headers: { 'Accept-Language': 'pt-BR' } });
+                    data = await resp.json();
+                }
+
+                if (data && data.length > 0) {
+                    const coords = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+                    geoCache[clean] = coords;
+                    try { localStorage.setItem(CACHE_GEO_KEY, JSON.stringify(geoCache)); } catch(e) {}
+                    return coords;
+                }
+            } catch(e) {
+                console.warn('Falha geocoding:', clean, e);
+            }
+            return null;
+        }
+
+        // ========== RENDERIZAÇÃO DE ENTREGADORES ==========
+        function renderizarEntregadoresMapa() {
+            if (!markersEntregadores) return;
+            markersEntregadores.clearLayers();
+
+            let onlineCount = 0;
+            const agora = Date.now();
+            const containerLista = document.getElementById('listaEntregadoresContainer');
+            if (containerLista) containerLista.innerHTML = '';
+
+            const entregadoresNomes = new Set();
+            Object.values(equipeEntregadores).forEach(e => {
+                if (e && e.nome) entregadoresNomes.add(e.nome.trim().toUpperCase());
+            });
+            Object.keys(statusEntregadores).forEach(n => entregadoresNomes.add(n.trim().toUpperCase()));
+
+            let totalColabs = 0;
+            entregadoresNomes.forEach(nome => {
+                if (!nome) return;
+                totalColabs++;
+                const st = statusEntregadores[nome] || {};
+                const isOnline = st.online && (st.ultimaVez ? (agora - st.ultimaVez < 180000) : false); // 3 min
+                if (isOnline) onlineCount++;
+
+                // Marcador no Mapa se tiver coordenadas
+                if (st.lat && st.lng && isOnline) {
+                    const customIcon = L.divIcon({
+                        className: 'marker-deliverer',
+                        html: `
+                            <div class="marker-pulse"></div>
+                            <div class="marker-deliverer-icon">🛵</div>
+                            <div class="marker-deliverer-name">${nome}</div>
+                        `,
+                        iconSize: [44, 44],
+                        iconAnchor: [22, 22]
+                    });
+
+                    const marker = L.marker([st.lat, st.lng], { icon: customIcon });
+                    
+                    const veloc = st.speed ? (st.speed * 3.6).toFixed(0) + ' km/h' : 'Parado';
+                    const popupHtml = `
+                        <div class="custom-popup">
+                            <div class="popup-title">🛵 ${nome}</div>
+                            <div class="popup-info-row"><span>Status:</span> <strong style="color:#00b894;">ONLINE</strong></div>
+                            <div class="popup-info-row"><span>Velocidade:</span> <strong>${veloc}</strong></div>
+                            <div class="popup-actions">
+                                <button class="popup-btn" style="background:#0984e3; grid-column:span 2;" onclick="window.tracarRotaEntregador('${nome}')">🛣️ Ver Trajeto do Dia</button>
+                            </div>
+                        </div>
+                    `;
+                    marker.bindPopup(popupHtml);
+                    markersEntregadores.addLayer(marker);
+                }
+
+                // Card na Sidebar
+                if (containerLista) {
+                    const card = document.createElement('div');
+                    card.className = 'sidebar-card entregador-item';
+                    card.onclick = () => {
+                        if (st.lat && st.lng) {
+                            window.focarNoMapa(st.lat, st.lng, 16);
+                        } else {
+                            window.tracarRotaEntregador(nome);
+                        }
+                    };
+
+                    card.innerHTML = `
+                        <div>
+                            <div class="card-title">🛵 ${nome}</div>
+                            <div class="card-subtitle">${isOnline ? '🟢 GPS Ativo no momento' : '⚪ Offline no momento'}</div>
+                        </div>
+                        <div>
+                            <span class="badge ${isOnline ? 'badge-online' : 'badge-offline'}">${isOnline ? 'ONLINE' : 'OFFLINE'}</span>
+                        </div>
+                    `;
+                    containerLista.appendChild(card);
+                }
+            });
+
+            document.getElementById('contadorOnline').textContent = `${onlineCount} Online`;
+            document.getElementById('totalEntregadoresAba').textContent = totalColabs;
+        }
+
+        // ========== RENDERIZAÇÃO DE PEDIDOS & ROTAS ==========
+        async function renderizarPedidosMapa() {
+            if (!markersPedidos) return;
+            markersPedidos.clearLayers();
+            layerRotaSequencia.clearLayers();
+
+            const dataSel = getDataSelecionada();
+            const filtroEntr = (document.getElementById('filtroEntregador').value || '').trim().toUpperCase();
+            const filtroSt = document.getElementById('filtroStatus').value || 'pendente';
+
+            const pedidosFiltrados = [];
+            let pendentesCount = 0;
+            let rotaCount = 0;
+
+            Object.entries(todosPedidos).forEach(([key, p]) => {
+                if (!p) return;
+                const dt = dataISO(p.data || p.data_pedido || p.dataHora);
+                const stNorm = (p.statusEntrega || p.status || 'Pendente').trim();
+                const stUpper = stNorm.toUpperCase();
+
+                if (dt === dataSel) {
+                    if (stUpper === 'PENDENTE' || stUpper === 'PRIORIZAR') pendentesCount++;
+                    if (stUpper === 'EM ROTA' || stUpper === 'INICIADO') rotaCount++;
+
+                    // Filtro de entregador
+                    if (filtroEntr) {
+                        const entP = (p.entregador || p.responsavel || '').trim().toUpperCase();
+                        if (entP !== filtroEntr) return;
+                    }
+
+                    // Filtro de status
+                    if (filtroSt === 'pendente') {
+                        const isPendenteOuRota = ['PENDENTE', 'EM ROTA', 'INICIADO', 'PRIORIZAR'].includes(stUpper);
+                        if (!isPendenteOuRota) return;
+                    } else if (filtroSt === 'concluido') {
+                        const isConcluido = ['CONCLUÍDA', 'CONCLUIDA', 'ENTREGUE', 'FINALIZADO'].includes(stUpper);
+                        if (!isConcluido) return;
+                    }
+
+                    pedidosFiltrados.push({ id: key, ...p, statusNormalizado: stUpper });
+                }
+            });
+
+            // Atualizar contadores
+            document.getElementById('contadorPendentes').textContent = `${pendentesCount} Pendentes`;
+            document.getElementById('contadorRota').textContent = `${rotaCount} Em Rota`;
+            document.getElementById('totalPedidosAba').textContent = pedidosFiltrados.length;
+
+            const containerLista = document.getElementById('listaPedidosContainer');
+            if (containerLista) containerLista.innerHTML = '';
+
+            if (pedidosFiltrados.length === 0 && containerLista) {
+                containerLista.innerHTML = '<div style="text-align:center; padding:30px; color:#94a3b8; font-size:13px;">Nenhum pedido encontrado com os filtros atuais.</div>';
+            }
+
+            // Ordenar pedidos para sequência lógica de entrega
+            pedidosFiltrados.sort((a, b) => {
+                const da = a.data || a.data_pedido || '';
+                const db = b.data || b.data_pedido || '';
+                return da.localeCompare(db);
+            });
+
+            const pontosRota = [];
+            const boundsArray = [];
+
+            for (let i = 0; i < pedidosFiltrados.length; i++) {
+                const p = pedidosFiltrados[i];
+                const end = p.endereco || p.local_entrega || '';
+                let coords = (p.lat && p.lng) ? { lat: parseFloat(p.lat), lng: parseFloat(p.lng) } : null;
+
+                if (!coords) coords = await geocodificarEndereco(end);
+
+                const numSequencia = i + 1;
+                const isConcluida = ['CONCLUÍDA', 'CONCLUIDA', 'ENTREGUE'].includes(p.statusNormalizado);
+                const isRota = ['EM ROTA', 'INICIADO'].includes(p.statusNormalizado);
+                const isPriorizar = p.statusNormalizado === 'PRIORIZAR';
+
+                let classeStatusPin = 'pendente-rota';
+                if (isConcluida) classeStatusPin = 'concluida';
+                else if (isRota) classeStatusPin = 'rota';
+
+                // Adicionar no Mapa se tiver coordenadas
+                if (coords) {
+                    pontosRota.push([coords.lat, coords.lng]);
+                    boundsArray.push([coords.lat, coords.lng]);
+
+                    const pinIcon = L.divIcon({
+                        className: 'marker-delivery-pin',
+                        html: `
+                            <div class="marker-delivery-bubble ${classeStatusPin}">
+                                <span class="stop-num-badge">${numSequencia}</span>
+                                <span>${(p.qtd || p.quantidade || 1)}x Gás</span>
+                            </div>
+                            <div class="marker-delivery-point ${classeStatusPin}"></div>
+                        `,
+                        iconSize: [80, 40],
+                        iconAnchor: [40, 40]
+                    });
+
+                    const marker = L.marker([coords.lat, coords.lng], { icon: pinIcon });
+
+                    const cleanTel = (p.telefone || '').replace(/\D/g, '');
+                    const valorFormatado = (typeof p.valor === 'number') ? `R$ ${p.valor.toFixed(2).replace('.', ',')}` : `R$ ${p.valor || '0,00'}`;
+
+                    const popupHtml = `
+                        <div class="custom-popup">
+                            <div class="popup-title">#${numSequencia} - ${p.cliente || 'Cliente'}</div>
+                            <div class="popup-info-row"><span>📦 Produto:</span> <strong>${(p.qtd || p.quantidade || 1)}x ${p.produto || 'Gás 13kg'}</strong></div>
+                            <div class="popup-info-row"><span>💰 Valor:</span> <strong style="color:#27ae60;">${valorFormatado}</strong> (${p.pagamento || p.forma_pagamento || 'Dinheiro'})</div>
+                            <div class="popup-info-row"><span>🛵 Entregador:</span> <strong>${p.entregador || 'Não atribuído'}</strong></div>
+                            <div class="popup-info-row"><span>📍 Endereço:</span> <span>${end}</span></div>
+                            <div class="popup-actions">
+                                <a href="https://waze.com/ul?q=${coords.lat},${coords.lng}" target="_blank" class="popup-btn waze">🚙 Waze</a>
+                                <a href="https://www.google.com/maps/search/?api=1&query=${coords.lat},${coords.lng}" target="_blank" class="popup-btn maps">🗺️ Maps</a>
+                                ${cleanTel ? `<a href="https://wa.me/55${cleanTel}" target="_blank" class="popup-btn whats">💬 WhatsApp</a>` : ''}
+                            </div>
+                        </div>
+                    `;
+
+                    marker.bindPopup(popupHtml);
+                    markersPedidos.addLayer(marker);
+                }
+
+                // Adicionar na Sidebar
+                if (containerLista) {
+                    const card = document.createElement('div');
+                    let statusClassCard = 'pendente';
+                    if (isConcluida) statusClassCard = 'concluida';
+                    else if (isRota) statusClassCard = 'rota';
+                    else if (isPriorizar) statusClassCard = 'prioridade';
+
+                    card.className = `sidebar-card pedido-item ${statusClassCard}`;
+                    card.onclick = () => {
+                        if (coords) window.focarNoMapa(coords.lat, coords.lng, 17);
+                    };
+
+                    card.innerHTML = `
+                        <div class="card-header-flex">
+                            <span class="card-title">#${numSequencia} - ${p.cliente || 'Cliente'}</span>
+                            <span class="badge ${isConcluida ? 'badge-online' : (isRota ? 'badge-rota' : 'badge-pendente')}">${p.statusEntrega || 'Pendente'}</span>
+                        </div>
+                        <div class="card-subtitle">📍 ${end}</div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; font-size:11.5px; margin-top:4px;">
+                            <span style="font-weight:700; color:#2d3436;">🛵 ${p.entregador || 'Sem Entregador'}</span>
+                            <span style="font-weight:800; color:#27ae60;">${(typeof p.valor === 'number') ? 'R$ ' + p.valor.toFixed(2).replace('.', ',') : p.valor || ''}</span>
+                        </div>
+                    `;
+                    containerLista.appendChild(card);
+                }
+            }
+
+            // Se o modo rota do dia estiver ativo ou se tiver mais de 1 ponto com entregador selecionado, traçar linha
+            if ((filtroSt === 'rota_dia' || filtroEntr) && pontosRota.length > 1) {
+                const polyline = L.polyline(pontosRota, {
+                    color: '#0984e3',
+                    weight: 5,
+                    opacity: 0.85,
+                    dashArray: '8, 8',
+                    lineJoin: 'round'
+                });
+                layerRotaSequencia.addLayer(polyline);
+
+                rotaAtivaBounds = L.latLngBounds(pontosRota);
+                document.getElementById('resumoRotaTitulo').textContent = filtroEntr ? `Rota de ${filtroEntr}` : 'Sequência da Rota do Dia';
+                document.getElementById('resumoRotaSubtitulo').textContent = `${pontosRota.length} pontos de entrega mapeados`;
+                document.getElementById('cardResumoRota').style.display = 'flex';
+            } else {
+                document.getElementById('cardResumoRota').style.display = 'none';
+            }
+        }
+
+        // ========== TRAÇADO DE TRAJETO GPS REAL ==========
+        window.tracarRotaEntregador = async function(nome) {
+            if (!nome || !layerHistoricoGps) return;
+            layerHistoricoGps.clearLayers();
+
+            const dataSel = getDataSelecionada();
+            try {
+                const snap = await window.firebaseGet(`historico_gps/${nome}/${dataSel}`);
+                const histData = snap.exists() ? snap.val() : null;
+
+                if (!histData || Object.keys(histData).length === 0) {
+                    alert(`Nenhum histórico de GPS registrado para ${nome} nesta data.`);
+                    return;
+                }
+
+                const pontos = Object.values(histData)
+                    .filter(p => p && p.lat && p.lng)
+                    .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0))
+                    .map(p => [p.lat, p.lng]);
+
+                if (pontos.length < 2) {
+                    alert(`Poucos pontos de GPS registrados para ${nome}.`);
+                    return;
+                }
+
+                const gpsLine = L.polyline(pontos, {
+                    color: '#ff4757',
+                    weight: 4,
+                    opacity: 0.9,
+                    lineJoin: 'round'
+                });
+                layerHistoricoGps.addLayer(gpsLine);
+
+                // Marcador de início e fim
+                const inicioPin = L.circleMarker(pontos[0], { radius: 6, color: '#00b894', fillColor: '#00b894', fillOpacity: 1 }).bindPopup(`🚀 Início: ${nome}`);
+                const fimPin = L.circleMarker(pontos[pontos.length - 1], { radius: 7, color: '#ff4757', fillColor: '#ff4757', fillOpacity: 1 }).bindPopup(`🏁 Última Posição: ${nome}`);
+                layerHistoricoGps.addLayer(inicioPin);
+                layerHistoricoGps.addLayer(fimPin);
+
+                map.fitBounds(L.latLngBounds(pontos), { padding: [50, 50] });
+            } catch(e) {
+                console.error('Erro ao carregar histórico GPS:', e);
+            }
+        };
+
+        // ========== FUNÇÕES GLOBAIS DE INTERAÇÃO ==========
+        window.toggleSidebar = function() {
+            const sb = document.getElementById('sidebar');
+            if (!sb) return;
+            sb.classList.toggle('collapsed');
+            setTimeout(() => { if (map) map.invalidateSize(); }, 350);
+        };
+
+        window.trocarAba = function(aba) {
+            abaAtiva = aba;
+            document.getElementById('tabEntregadoresBtn').classList.toggle('active', aba === 'entregadores');
+            document.getElementById('tabPedidosBtn').classList.toggle('active', aba === 'pedidos');
+            document.getElementById('listaEntregadoresContainer').style.display = (aba === 'entregadores') ? 'block' : 'none';
+            document.getElementById('listaPedidosContainer').style.display = (aba === 'pedidos') ? 'block' : 'none';
+        };
+
+        window.aoMudarDataFiltro = function() {
+            const btnHoje = document.getElementById('btnDataHoje');
+            const hoje = new Date().toISOString().split('T')[0];
+            const dataSel = getDataSelecionada();
+            if (btnHoje) btnHoje.classList.toggle('active', dataSel === hoje);
+            aplicarFiltrosMapa();
+        };
+
+        window.definirDataHoje = function() {
+            const hoje = new Date().toISOString().split('T')[0];
+            document.getElementById('filtroData').value = hoje;
+            window.aoMudarDataFiltro();
+        };
+
+        window.aplicarFiltrosMapa = function() {
+            renderizarPedidosMapa();
+        };
+
+        window.focarNoMapa = function(lat, lng, zoom = 16) {
+            if (!map) return;
+            map.flyTo([lat, lng], zoom, { animate: true, duration: 1 });
+        };
+
+        window.enquadrarRotaInteira = function() {
+            if (map && rotaAtivaBounds) {
+                map.fitBounds(rotaAtivaBounds, { padding: [60, 60] });
+            }
+        };
+
+        window.fecharResumoRota = function() {
+            document.getElementById('cardResumoRota').style.display = 'none';
+        };
+
+        // ========== CARREGAMENTO EM TEMPO REAL ==========
+        function iniciarEscutaDados() {
+            window.definirDataHoje();
+
+            // Status dos Entregadores
+            window.firebaseOnValue('status_entregadores', (snap) => {
+                statusEntregadores = snap.exists() ? snap.val() : {};
+                renderizarEntregadoresMapa();
+            });
+
+            // Equipe
+            window.firebaseOnValue('equipe_entregadores', (snap) => {
+                equipeEntregadores = snap.exists() ? snap.val() : {};
+                const sel = document.getElementById('filtroEntregador');
+                if (sel) {
+                    const valAtual = sel.value;
+                    sel.innerHTML = '<option value="">🛵 Todos os Entregadores</option>';
+                    Object.values(equipeEntregadores).forEach(e => {
+                        if (e && e.nome) {
+                            const opt = document.createElement('option');
+                            opt.value = e.nome;
+                            opt.textContent = `🛵 ${e.nome}`;
+                            sel.appendChild(opt);
+                        }
+                    });
+                    sel.value = valAtual;
+                }
+                renderizarEntregadoresMapa();
+            });
+
+            // Pedidos
+            window.firebaseOnValue('pedidos_realtime', (snap) => {
+                todosPedidos = snap.exists() ? snap.val() : {};
+                renderizarPedidosMapa();
+            });
+        }
+
+        // Início ao carregar a página
+        document.addEventListener('DOMContentLoaded', () => {
+            initMap();
+            iniciarEscutaDados();
+        });
+    })();
+    </script>
 </body>
 
 </html>
