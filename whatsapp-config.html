@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Configurações WhatsApp - Canoas Gás</title>
+    <title>Configurações WhatsApp (VPS) - Canoas Gás</title>
 
     <link rel="icon" type="image/x-icon" href="LOGO.ico">
 
@@ -46,13 +46,16 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 30px;
+            margin-bottom: 25px;
             padding-bottom: 15px;
             border-bottom: 1px solid var(--border-color);
+            max-width: 900px;
+            margin-left: auto;
+            margin-right: auto;
         }
         
         .header h1 {
-            font-size: 24px;
+            font-size: 22px;
             display: flex;
             align-items: center;
             gap: 10px;
@@ -67,6 +70,12 @@
             cursor: pointer;
             text-decoration: none;
             font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-voltar:hover {
+            background: rgba(255,255,255,0.18);
         }
 
         .config-container {
@@ -76,6 +85,7 @@
             padding: 25px;
             border-radius: var(--radius-lg);
             border: 1px solid var(--border-color);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
         }
 
         .form-group {
@@ -88,6 +98,7 @@
         .form-group label {
             font-weight: 600;
             color: #c9d1d9;
+            font-size: 14px;
         }
         
         .form-group small {
@@ -112,7 +123,7 @@
         }
 
         textarea.form-control {
-            min-height: 100px;
+            min-height: 90px;
             resize: vertical;
         }
 
@@ -133,6 +144,7 @@
             display: inline-block;
             width: 50px;
             height: 24px;
+            flex-shrink: 0;
         }
 
         .switch input {
@@ -183,7 +195,7 @@
             font-size: 16px;
             cursor: pointer;
             width: 100%;
-            margin-top: 20px;
+            margin-top: 15px;
             transition: opacity 0.2s;
         }
 
@@ -192,12 +204,16 @@
         }
         
         .section-title {
-            margin-top: 30px;
+            margin-top: 25px;
             margin-bottom: 15px;
-            font-size: 18px;
+            font-size: 16px;
             color: var(--primary);
             border-bottom: 1px dashed rgba(255,255,255,0.1);
-            padding-bottom: 10px;
+            padding-bottom: 8px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
         
         #toast {
@@ -209,7 +225,7 @@
             border-radius: 8px;
             padding: 16px;
             position: fixed;
-            z-index: 1;
+            z-index: 1000;
             right: 20px;
             bottom: 30px;
             font-size: 15px;
@@ -231,44 +247,120 @@
             from {bottom: 30px; opacity: 1;}
             to {bottom: 0; opacity: 0;}
         }
+
+        /* QR Code Card Styles */
+        .qr-card {
+            background: rgba(22, 27, 34, 0.8);
+            border: 1px solid rgba(37, 211, 102, 0.3);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            margin-bottom: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .qr-box {
+            background: #ffffff;
+            padding: 12px;
+            border-radius: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+            margin: 0 auto;
+            max-width: 280px;
+        }
+        .qr-box img {
+            width: 100%;
+            height: auto;
+            display: block;
+            border-radius: 6px;
+        }
     </style>
-    <!-- VPS Socket.IO & Adapter (Primeiros Scripts) -->
+    <!-- VPS Socket.IO & Adapter -->
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="js/vps-adapter.js"></script>
 </head>
 
 <body>
     <div class="header">
-        <h1>💬 Configurações do Servidor WhatsApp</h1>
+        <h1>💬 Configurações do WhatsApp (VPS)</h1>
         <a href="index.html" class="btn-voltar">🔙 Voltar para Início</a>
     </div>
 
     <div class="config-container">
         
-        <!-- STATUS DO SERVIDOR (NOTEBOOK) -->
-        <div id="cardStatusServidor" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 18px; margin-bottom: 25px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 15px;">
-            <div style="display: flex; align-items: center; gap: 14px;">
-                <div id="statusDot" style="width: 18px; height: 18px; border-radius: 50%; background: #e74c3c; box-shadow: 0 0 10px #e74c3c; transition: all 0.3s;"></div>
-                <div>
-                    <div style="font-weight: 700; font-size: 16px;" id="statusTextoServidor">Servidor WhatsApp: Verificando...</div>
-                    <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;" id="statusDetalheServidor">Aguardando sinal do Notebook...</div>
+        <!-- STATUS DO SERVIDOR & QR CODE (VPS) -->
+        <div id="cardStatusServidor" class="qr-card">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div id="statusDot" style="width: 18px; height: 18px; border-radius: 50%; background: #f1c40f; box-shadow: 0 0 10px #f1c40f; transition: all 0.3s;"></div>
+                    <div>
+                        <div style="font-weight: 700; font-size: 16px;" id="statusTextoServidor">Servidor WhatsApp VPS: Verificando...</div>
+                        <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;" id="statusDetalheServidor">Consultando VPS em http://179.236.224.192:3001...</div>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button type="button" onclick="consultarStatusVPS()" style="background: rgba(255,255,255,0.08); color: white; border: 1px solid rgba(255,255,255,0.2); padding: 8px 14px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px;">
+                        🔄 Atualizar Status
+                    </button>
                 </div>
             </div>
-            <div style="display: flex; gap: 10px;">
-                <button type="button" onclick="testarEnvioFila()" style="background: #25d366; color: white; border: none; padding: 10px 16px; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 10px rgba(37,211,102,0.3);">
-                    📲 Testar Disparo na Fila
-                </button>
+
+            <!-- Box do QR Code (Aparece quando status for 'qr') -->
+            <div id="boxQRCode" style="display: none; text-align: center; padding: 20px; background: rgba(0,0,0,0.3); border-radius: var(--radius-md); border: 1px dashed rgba(37, 211, 102, 0.4);">
+                <div style="font-size: 15px; font-weight: 700; color: #25d366; margin-bottom: 8px;">
+                    📲 Escaneie o QR Code no seu WhatsApp
+                </div>
+                <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px; max-width: 480px; margin-left: auto; margin-right: auto;">
+                    Abra o <strong>WhatsApp</strong> no celular &gt; <strong>Menu (ou Configurações)</strong> &gt; <strong>Aparelhos Conectados</strong> &gt; <strong>Conectar um aparelho</strong> e aponte para a imagem abaixo:
+                </div>
+                <div class="qr-box">
+                    <img id="imgQRCode" src="" alt="QR Code WhatsApp">
+                </div>
+                <div style="margin-top: 15px; font-size: 12px; color: #8b949e;">
+                    O sistema verifica a conexão automaticamente a cada 3 segundos.
+                </div>
+            </div>
+
+            <!-- Box Conectado com Sucesso -->
+            <div id="boxConectado" style="display: none; padding: 15px; background: rgba(37, 211, 102, 0.1); border: 1px solid rgba(37, 211, 102, 0.3); border-radius: var(--radius-md); text-align: center;">
+                <div style="font-size: 16px; font-weight: 700; color: #2ecc71;">
+                    🎉 WhatsApp Conectado e Pronto no VPS!
+                </div>
+                <div style="font-size: 13px; color: #c9d1d9; margin-top: 4px;">
+                    O servidor está ativo 24h por dia para realizar disparos automáticos e com imagens.
+                </div>
             </div>
         </div>
 
-        <div class="section-title">🔗 Conexão com o Servidor Local (Notebook)</div>
-        <div class="form-group">
-            <label>URL da API Local (Opcional se usar a Nuvem)</label>
-            <input type="text" id="wp_url" class="form-control" placeholder="Ex: http://localhost:3000/send-message">
-            <small>Quando o pedido é feito em outro computador ou celular, a mensagem vai direto pela Nuvem (Firebase) para o seu Notebook.</small>
+        <!-- TESTAR DISPARO IMEDIATO -->
+        <div class="section-title">🚀 Testar Disparo de Mensagem pelo VPS</div>
+        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); padding: 18px; border-radius: var(--radius-md); margin-bottom: 25px;">
+            <div style="display: grid; grid-template-columns: 1fr 2fr auto; gap: 10px; align-items: flex-end;">
+                <div>
+                    <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">Telefone com DDD:</label>
+                    <input type="text" id="teste_telefone" class="form-control" placeholder="Ex: 31982557807">
+                </div>
+                <div>
+                    <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">Mensagem de Teste:</label>
+                    <input type="text" id="teste_mensagem" class="form-control" value="🔥 Teste de envio automático Canoas Gás pelo VPS 24h!">
+                </div>
+                <button type="button" onclick="realizarDisparoTeste()" id="btnDisparoTeste" style="background: linear-gradient(135deg, #25d366 0%, #128c7e 100%); color: white; border: none; padding: 12px 18px; border-radius: var(--radius-md); font-weight: 700; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px; white-space: nowrap; height: 44px; box-shadow: 0 4px 12px rgba(37,211,102,0.3);">
+                    📲 Enviar Teste
+                </button>
+            </div>
+            <div id="statusEnvioTeste" style="font-size: 12px; margin-top: 10px; font-weight: 600;"></div>
         </div>
 
-        <div class="section-title">⚡ Automação: Ao Gerar Pedido</div>
+        <div class="section-title">🔗 Conexão com a API do Servidor</div>
+        <div class="form-group">
+            <label>URL da API do WhatsApp no VPS</label>
+            <input type="text" id="wp_url" class="form-control" placeholder="http://179.236.224.192:3001/send-message">
+            <small>Endereço do microserviço de WhatsApp que está rodando diretamente no seu VPS.</small>
+        </div>
+
+        <div class="section-title">⚡ Automação: Ao Gerar Pedido para o CLIENTE</div>
         
         <div class="toggle-container" style="margin-bottom: 10px;">
             <label class="switch">
@@ -280,7 +372,7 @@
             </div>
         </div>
 
-        <div class="toggle-container" style="margin-bottom: 10px; background: rgba(37, 211, 102, 0.05); border: 1px solid rgba(37, 211, 102, 0.2);">
+        <div class="toggle-container" style="margin-bottom: 15px; background: rgba(37, 211, 102, 0.05); border: 1px solid rgba(37, 211, 102, 0.2);">
             <label class="switch">
                 <input type="checkbox" id="wp_anexar_logo_cliente" checked onchange="atualizarVisibilidadeBoxLogo()">
                 <span class="slider"></span>
@@ -288,7 +380,7 @@
             <div>
                 <strong>📸 Anexar arquivo com Logo da Canoas Gás para o CLIENTE</strong>
                 <div style="font-size: 12px; color: var(--text-muted); margin-top: 3px;">
-                    Envia o arquivo oficial da logo em anexo no WhatsApp com a mensagem do cliente como legenda (exatamente como o crachá).
+                    Envia o arquivo oficial da logo em anexo no WhatsApp com a mensagem do cliente como legenda.
                 </div>
             </div>
         </div>
@@ -299,7 +391,7 @@
                 <label style="font-weight: 700; font-size: 13px; color: #2ecc71; margin: 0; display: flex; align-items: center; gap: 6px;">
                     <span>🖼️</span> Imagem da Logo que será enviada:
                 </label>
-                <span id="badgeOrigemLogo" style="font-size: 11px; background: rgba(37, 211, 102, 0.15); color: #2ecc71; padding: 2px 8px; border-radius: 6px; font-weight: 600;">Padrão Oficial (logo.png)</span>
+                <span id="badgeOrigemLogo" style="font-size: 11px; background: rgba(37, 211, 102, 0.15); color: #2ecc71; padding: 2px 8px; border-radius: 6px; font-weight: 600;">Padrão Oficial</span>
             </div>
             
             <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
@@ -309,7 +401,7 @@
                 
                 <div style="flex: 1; min-width: 220px;">
                     <div style="margin-bottom: 8px;">
-                        <span style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px; font-weight: 600;">Modelos Otimizados para WhatsApp:</span>
+                        <span style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px; font-weight: 600;">Modelos Otimizados:</span>
                         <div style="display: flex; gap: 6px; flex-wrap: wrap;">
                             <button type="button" onclick="aplicarPresetLogo('horizontal')" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); color: #f1f5f9; padding: 5px 10px; border-radius: 6px; font-size: 11.5px; cursor: pointer;">
                                 📏 Horizontal (16:9)
@@ -333,20 +425,17 @@
                             ↺ Restaurar Original
                         </button>
                     </div>
-                    <small id="infoArquivoLogo" style="color: var(--text-muted); font-size: 11px; display: block; line-height: 1.4;">
-                        Imagens são automaticamente adaptadas na proporção ideal (16:9) para que nunca sejam cortadas no WhatsApp dos clientes.
-                    </small>
                 </div>
             </div>
         </div>
 
         <div class="form-group">
-            <label>Mensagem para o CLIENTE (Ao Gerar)</label>
-            <small>Variáveis permitidas: {{nome_cliente}}, {{endereco}}, {{produto}}, {{valor}}, {{nome_entregador}}</small>
-            <textarea id="wp_msg_cliente" class="form-control" placeholder="Olá {{nome_cliente}}, seu pedido está a caminho!"></textarea>
+            <label>Mensagem para o CLIENTE (Ao Gerar Pedido)</label>
+            <small>Tags automáticas: {{nome_cliente}}, {{endereco}}, {{produto}}, {{valor}}, {{nome_entregador}}</small>
+            <textarea id="wp_msg_cliente" class="form-control" placeholder="Olá {{nome_cliente}}, seu pedido de {{produto}} no valor de R$ {{valor}} está a caminho com o entregador {{nome_entregador}}!"></textarea>
         </div>
 
-        <hr style="border: 0; border-top: 1px dashed rgba(255,255,255,0.1); margin: 25px 0;">
+        <div class="section-title">⚡ Automação: Ao Gerar Pedido para o ENTREGADOR</div>
 
         <div class="toggle-container" style="margin-bottom: 10px;">
             <label class="switch">
@@ -359,16 +448,16 @@
         </div>
         <div class="form-group">
             <label>Mensagem para o ENTREGADOR (Ficha de Entrega)</label>
-            <small>Variáveis permitidas: {{nome_cliente}}, {{endereco}}, {{produto}}, {{valor}}, {{telefone_cliente}}, {{forma_pagamento}}, {{info_adc}}</small>
-            <textarea id="wp_msg_entregador" class="form-control" placeholder="Nova Entrega: {{nome_cliente}} - {{endereco}}"></textarea>
+            <small>Tags automáticas: {{nome_cliente}}, {{endereco}}, {{produto}}, {{valor}}, {{telefone_cliente}}, {{forma_pagamento}}, {{info_adc}}</small>
+            <textarea id="wp_msg_entregador" class="form-control" placeholder="Nova Entrega: {{nome_cliente}} - {{endereco}} | Produto: {{produto}} | Valor: R$ {{valor}} | Pagamento: {{forma_pagamento}}"></textarea>
         </div>
 
-        <button class="btn-salvar" onclick="salvarConfiguracoes()">Salvar Configurações</button>
+        <button class="btn-salvar" onclick="salvarConfiguracoes()">💾 Salvar Todas as Configurações</button>
 
         <!-- MONITOR DE FILA EM TEMPO REAL -->
-        <div style="margin-top: 40px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <div class="section-title" style="margin: 0; border: none; padding: 0;">📥 Monitor da Fila do WhatsApp (Nuvem)</div>
+        <div style="margin-top: 35px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <div class="section-title" style="margin: 0; border: none; padding: 0;">📥 Monitor de Disparos em Tempo Real</div>
                 <button type="button" onclick="limparFilaConcluida()" style="background: rgba(255,255,255,0.08); color: var(--text-muted); border: 1px solid rgba(255,255,255,0.15); padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer;">
                     🗑️ Limpar Concluídas
                 </button>
@@ -387,7 +476,7 @@
                     </thead>
                     <tbody id="tabelaFilaCorpo">
                         <tr>
-                            <td colspan="5" style="text-align: center; padding: 20px; color: var(--text-muted);">Nenhuma mensagem na fila recentemente.</td>
+                            <td colspan="5" style="text-align: center; padding: 20px; color: var(--text-muted);">Aguardando mensagens...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -395,9 +484,255 @@
         </div>
     </div>
 
-    <div id="toast">✅ Configurações salvas no Firebase!</div>
+    <div id="toast">✅ Configurações salvas com sucesso!</div>
 
-    <!-- Firebase SDK (Módulos) -->
-    
+    <script>
+        const VPS_WHATSAPP_STATUS_URL = 'http://179.236.224.192:3001/api/status';
+        const VPS_WHATSAPP_SEND_URL = 'http://179.236.224.192:3001/send-message';
+
+        let timerStatusVPS = null;
+
+        // Consultar status do VPS e exibir QR Code ou Conectado
+        async function consultarStatusVPS() {
+            const statusDot = document.getElementById('statusDot');
+            const statusTexto = document.getElementById('statusTextoServidor');
+            const statusDetalhe = document.getElementById('statusDetalheServidor');
+            const boxQR = document.getElementById('boxQRCode');
+            const boxConectado = document.getElementById('boxConectado');
+            const imgQR = document.getElementById('imgQRCode');
+
+            try {
+                const response = await fetch(VPS_WHATSAPP_STATUS_URL, { cache: 'no-store' });
+                if (!response.ok) throw new Error('Servidor retornou erro ' + response.status);
+                
+                const data = await response.json();
+
+                if (data.status === 'connected') {
+                    statusDot.style.background = '#2ecc71';
+                    statusDot.style.boxShadow = '0 0 12px #2ecc71';
+                    statusTexto.textContent = 'Servidor WhatsApp VPS: Conectado ✅';
+                    statusDetalhe.textContent = 'Online 24h e pronto para enviar mensagens e imagens.';
+                    boxQR.style.display = 'none';
+                    boxConectado.style.display = 'block';
+                } else if (data.status === 'qr' && data.qr) {
+                    statusDot.style.background = '#f1c40f';
+                    statusDot.style.boxShadow = '0 0 12px #f1c40f';
+                    statusTexto.textContent = 'Aguardando Leitura do QR Code 📲';
+                    statusDetalhe.textContent = 'Escaneie o QR Code abaixo com seu WhatsApp para conectar.';
+                    imgQR.src = data.qr;
+                    boxQR.style.display = 'block';
+                    boxConectado.style.display = 'none';
+                } else {
+                    statusDot.style.background = '#3498db';
+                    statusDot.style.boxShadow = '0 0 12px #3498db';
+                    statusTexto.textContent = 'Servidor WhatsApp VPS: Inicializando...';
+                    statusDetalhe.textContent = 'Aguardando geração do QR Code...';
+                    boxQR.style.display = 'none';
+                    boxConectado.style.display = 'none';
+                }
+            } catch (err) {
+                statusDot.style.background = '#e74c3c';
+                statusDot.style.boxShadow = '0 0 12px #e74c3c';
+                statusTexto.textContent = 'Servidor WhatsApp VPS: Desconectado / Offline';
+                statusDetalhe.textContent = 'Não foi possível conectar a ' + VPS_WHATSAPP_STATUS_URL;
+                boxQR.style.display = 'none';
+                boxConectado.style.display = 'none';
+            }
+        }
+
+        // Testar disparo de mensagem direto
+        async function realizarDisparoTeste() {
+            const telInput = document.getElementById('teste_telefone').value.replace(/\D/g, '');
+            const msgInput = document.getElementById('teste_mensagem').value.trim();
+            const statusDiv = document.getElementById('statusEnvioTeste');
+            const btn = document.getElementById('btnDisparoTeste');
+
+            if (!telInput || telInput.length < 10) {
+                alert('Por favor, informe um telefone válido com DDD (ex: 31982557807)');
+                return;
+            }
+
+            statusDiv.style.color = '#f1c40f';
+            statusDiv.textContent = '⏳ Enviando mensagem pelo VPS...';
+            btn.disabled = true;
+
+            const urlApi = document.getElementById('wp_url').value.trim() || VPS_WHATSAPP_SEND_URL;
+
+            try {
+                const payload = {
+                    phone: '55' + telInput,
+                    message: msgInput
+                };
+
+                // Anexar logo se marcado
+                if (document.getElementById('wp_anexar_logo_cliente').checked && window.LOGO_PNG_BASE64) {
+                    payload.imageBase64 = localStorage.getItem('custom_logo_base64') || window.LOGO_PNG_BASE64;
+                    payload.caption = msgInput;
+                }
+
+                const res = await fetch(urlApi, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const json = await res.json();
+                if (res.ok) {
+                    statusDiv.style.color = '#2ecc71';
+                    statusDiv.textContent = '✅ Mensagem de teste enviada com sucesso para o WhatsApp!';
+                } else {
+                    statusDiv.style.color = '#e74c3c';
+                    statusDiv.textContent = '❌ Erro ao enviar: ' + (json.error || 'Falha no VPS');
+                }
+            } catch (e) {
+                statusDiv.style.color = '#e74c3c';
+                statusDiv.textContent = '❌ Erro de conexão com o VPS: ' + e.message;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // Carregar configurações salvas
+        function carregarConfiguracoes() {
+            document.getElementById('wp_url').value = localStorage.getItem('wp_url') || VPS_WHATSAPP_SEND_URL;
+            document.getElementById('wp_auto_cliente').checked = localStorage.getItem('wp_auto_cliente') === 'true';
+            document.getElementById('wp_auto_entregador').checked = localStorage.getItem('wp_auto_entregador') === 'true';
+            
+            const anexoLogo = localStorage.getItem('wp_anexar_logo_cliente');
+            document.getElementById('wp_anexar_logo_cliente').checked = (anexoLogo === null || anexoLogo === 'true');
+            
+            document.getElementById('wp_msg_cliente').value = localStorage.getItem('wp_msg_cliente') || 
+                'Olá {{nome_cliente}}, seu pedido de {{produto}} no valor de R$ {{valor}} está a caminho com o entregador {{nome_entregador}}! 🛵💨';
+            
+            document.getElementById('wp_msg_entregador').value = localStorage.getItem('wp_msg_entregador') || 
+                '🚀 Nova Entrega:\n👤 Cliente: {{nome_cliente}}\n📍 Endereço: {{endereco}}\n📦 Produto: {{produto}}\n💰 Valor: R$ {{valor}}\n💳 Pagamento: {{forma_pagamento}}';
+
+            atualizarVisibilidadeBoxLogo();
+        }
+
+        function salvarConfiguracoes() {
+            localStorage.setItem('wp_url', document.getElementById('wp_url').value.trim() || VPS_WHATSAPP_SEND_URL);
+            localStorage.setItem('wp_auto_cliente', document.getElementById('wp_auto_cliente').checked);
+            localStorage.setItem('wp_auto_entregador', document.getElementById('wp_auto_entregador').checked);
+            localStorage.setItem('wp_anexar_logo_cliente', document.getElementById('wp_anexar_logo_cliente').checked);
+            localStorage.setItem('wp_msg_cliente', document.getElementById('wp_msg_cliente').value);
+            localStorage.setItem('wp_msg_entregador', document.getElementById('wp_msg_entregador').value);
+
+            // Salvar também no VPS / Firebase para sincronizar todos os dispositivos
+            if (window.firebaseSet && window.firebaseRef && window.remoteDb) {
+                try {
+                    window.firebaseSet('configuracoes_whatsapp', {
+                        wp_url: document.getElementById('wp_url').value.trim() || VPS_WHATSAPP_SEND_URL,
+                        wp_auto_cliente: document.getElementById('wp_auto_cliente').checked,
+                        wp_auto_entregador: document.getElementById('wp_auto_entregador').checked,
+                        wp_anexar_logo_cliente: document.getElementById('wp_anexar_logo_cliente').checked,
+                        wp_msg_cliente: document.getElementById('wp_msg_cliente').value,
+                        wp_msg_entregador: document.getElementById('wp_msg_entregador').value,
+                        atualizadoEm: Date.now()
+                    });
+                } catch(e) {}
+            }
+
+            const toast = document.getElementById('toast');
+            toast.className = 'show';
+            setTimeout(() => { toast.className = toast.className.replace('show', ''); }, 3000);
+        }
+
+        function atualizarVisibilidadeBoxLogo() {
+            const checked = document.getElementById('wp_anexar_logo_cliente').checked;
+            document.getElementById('boxSeletorLogo').style.display = checked ? 'block' : 'none';
+        }
+
+        function aplicarPresetLogo(tipo) {
+            const preview = document.getElementById('previewLogoCliente');
+            const badge = document.getElementById('badgeOrigemLogo');
+            if (tipo === 'horizontal') {
+                preview.src = 'logo_whatsapp_16x9.png';
+                badge.textContent = 'Horizontal (16:9)';
+                localStorage.removeItem('custom_logo_base64');
+            } else if (tipo === 'stacked') {
+                preview.src = 'logo_whatsapp_stacked.png';
+                badge.textContent = 'Vertical';
+                localStorage.removeItem('custom_logo_base64');
+            } else if (tipo === '3d') {
+                preview.src = 'logo_whatsapp_3d.jpg';
+                badge.textContent = '3D Botijão';
+                localStorage.removeItem('custom_logo_base64');
+            }
+        }
+
+        function aoSelecionarNovaLogo(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const base64 = e.target.result;
+                document.getElementById('previewLogoCliente').src = base64;
+                document.getElementById('badgeOrigemLogo').textContent = 'Personalizada';
+                localStorage.setItem('custom_logo_base64', base64);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function restaurarLogoPadrao() {
+            aplicarPresetLogo('horizontal');
+        }
+
+        // Monitorar Fila de WhatsApp no VPS
+        function monitorarFilaWhatsApp() {
+            if (window.firebaseOnValue) {
+                window.firebaseOnValue('fila_whatsapp', (snap) => {
+                    const dados = snap.val();
+                    const corpo = document.getElementById('tabelaFilaCorpo');
+                    if (!dados) {
+                        corpo.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px; color: var(--text-muted);">Nenhuma mensagem na fila recentemente.</td></tr>';
+                        return;
+                    }
+
+                    const lista = Object.entries(dados).map(([id, item]) => ({ id, ...item }));
+                    lista.sort((a, b) => (b.criadoEm || 0) - (a.criadoEm || 0));
+                    const recentes = lista.slice(0, 15);
+
+                    if (recentes.length === 0) {
+                        corpo.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px; color: var(--text-muted);">Nenhuma mensagem na fila recentemente.</td></tr>';
+                        return;
+                    }
+
+                    corpo.innerHTML = recentes.map(item => {
+                        const hora = item.criadoEm ? new Date(item.criadoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '--:--';
+                        const statusColor = item.status === 'enviado' ? '#2ecc71' : (item.status === 'erro' ? '#e74c3c' : '#f1c40f');
+                        const statusBadge = `<span style="color: ${statusColor}; font-weight: 700;">● ${item.status || 'pendente'}</span>`;
+                        return `
+                            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                <td style="padding: 8px 12px; color: var(--text-muted);">${hora}</td>
+                                <td style="padding: 8px 12px;"><span style="background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px; font-size: 11px;">${item.tipo || 'geral'}</span></td>
+                                <td style="padding: 8px 12px; font-weight: 600;">${item.destinatario || item.cliente || '-'}</td>
+                                <td style="padding: 8px 12px; font-family: monospace;">${item.telefone || '-'}</td>
+                                <td style="padding: 8px 12px;">${statusBadge}</td>
+                            </tr>
+                        `;
+                    }).join('');
+                });
+            }
+        }
+
+        function limparFilaConcluida() {
+            if (confirm('Deseja limpar as mensagens enviadas da fila?')) {
+                if (window.firebaseRemove) {
+                    window.firebaseRemove('fila_whatsapp');
+                }
+            }
+        }
+
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', () => {
+            carregarConfiguracoes();
+            consultarStatusVPS();
+            monitorarFilaWhatsApp();
+
+            // Polling de status a cada 3 segundos
+            timerStatusVPS = setInterval(consultarStatusVPS, 3000);
+        });
+    </script>
 </body>
 </html>

@@ -545,6 +545,23 @@
             opacity: 0.95;
         }
 
+        /* Tooltip customizada para os pontos de GPS */
+        .leaflet-gps-tooltip {
+            background: rgba(45, 52, 54, 0.95) !important;
+            border: 1px solid rgba(255, 255, 255, 0.25) !important;
+            color: #ffffff !important;
+            font-family: 'Outfit', sans-serif !important;
+            font-size: 11px !important;
+            font-weight: 600 !important;
+            border-radius: 6px !important;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3) !important;
+            padding: 4px 8px !important;
+            pointer-events: none !important;
+        }
+        .leaflet-gps-tooltip::before {
+            border-top-color: rgba(45, 52, 54, 0.95) !important;
+        }
+
         /* Card Flutuante de Resumo da Rota */
         .card-resumo-rota {
             position: absolute;
@@ -891,8 +908,8 @@
 
             L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; OpenStreetMap contributors',
+            L.tileLayer('http://mt0.google.com/vt/lyrs=m&hl=pt&x={x}&y={y}&z={z}', {
+                attribution: '&copy; Google Maps',
                 maxZoom: 19
             }).addTo(map);
 
@@ -937,6 +954,34 @@
             return null;
         }
 
+        // Helper para localizar o status do entregador por nome ou apelido
+        function getStatusPorNome(nome) {
+            if (!nome) return {};
+            const nomeNorm = nome.trim().toUpperCase();
+            if (statusEntregadores[nomeNorm]) return statusEntregadores[nomeNorm];
+
+            // Variações com barras, sublinhados e hífens (ex: ISABELLA/GIL -> ISABELLA___GIL)
+            const v1 = nomeNorm.replace(/\//g, '___');
+            if (statusEntregadores[v1]) return statusEntregadores[v1];
+            const v2 = nomeNorm.replace(/\//g, '_');
+            if (statusEntregadores[v2]) return statusEntregadores[v2];
+            const v3 = nomeNorm.replace(/\//g, '-');
+            if (statusEntregadores[v3]) return statusEntregadores[v3];
+
+            // Buscar em chaves com formatações diferentes
+            for (const [k, v] of Object.entries(statusEntregadores)) {
+                if (!v) continue;
+                const kNorm = k.trim().toUpperCase();
+                if (kNorm === nomeNorm || kNorm === v1 || kNorm.replace(/[^A-Z0-9]/g, '') === nomeNorm.replace(/[^A-Z0-9]/g, '')) {
+                    return v;
+                }
+                if (v.nome && v.nome.trim().toUpperCase() === nomeNorm) {
+                    return v;
+                }
+            }
+            return {};
+        }
+
         // ========== RENDERIZAÇÃO DE ENTREGADORES ==========
         function renderizarEntregadoresMapa() {
             if (!markersEntregadores) return;
@@ -951,14 +996,19 @@
             Object.values(equipeEntregadores).forEach(e => {
                 if (e && e.nome) entregadoresNomes.add(e.nome.trim().toUpperCase());
             });
-            Object.keys(statusEntregadores).forEach(n => entregadoresNomes.add(n.trim().toUpperCase()));
 
             let totalColabs = 0;
             entregadoresNomes.forEach(nome => {
                 if (!nome) return;
                 totalColabs++;
-                const st = statusEntregadores[nome] || {};
-                const isOnline = st.online && (st.ultimaVez ? (agora - st.ultimaVez < 180000) : false); // 3 min
+                const st = getStatusPorNome(nome);
+                const ultAtiv = Math.max(
+                    Number(st.ultimaVez) || 0,
+                    Number(st.heartbeat) || 0,
+                    Number(st.timestamp) || 0
+                );
+                // 10 minutos de tolerância (600.000 ms), padrão alinhado ao index.html
+                const isOnline = Boolean(st.online) && (ultAtiv > 0 ? ((agora - ultAtiv) < 600000) : false);
                 if (isOnline) onlineCount++;
 
                 // Marcador no Mapa se tiver coordenadas
@@ -995,21 +1045,27 @@
                 if (containerLista) {
                     const card = document.createElement('div');
                     card.className = 'sidebar-card entregador-item';
+                    card.style.cursor = 'pointer';
                     card.onclick = () => {
+                        const selEntr = document.getElementById('filtroEntregador');
+                        if (selEntr) {
+                            selEntr.value = nome;
+                        }
                         if (st.lat && st.lng) {
                             window.focarNoMapa(st.lat, st.lng, 16);
-                        } else {
-                            window.tracarRotaEntregador(nome);
                         }
+                        window.tracarRotaEntregador(nome);
+                        renderizarPedidosMapa();
                     };
 
                     card.innerHTML = `
-                        <div>
+                        <div style="flex:1;">
                             <div class="card-title">🛵 ${nome}</div>
                             <div class="card-subtitle">${isOnline ? '🟢 GPS Ativo no momento' : '⚪ Offline no momento'}</div>
                         </div>
-                        <div>
+                        <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
                             <span class="badge ${isOnline ? 'badge-online' : 'badge-offline'}">${isOnline ? 'ONLINE' : 'OFFLINE'}</span>
+                            <span style="font-size:10px; color:#ff4757; font-weight:700;" title="Ver trilha vermelha de GPS">🔴 Trilha GPS</span>
                         </div>
                     `;
                     containerLista.appendChild(card);
@@ -1191,48 +1247,236 @@
             }
         }
 
+        // ========== NOTIFICAÇÃO TOAST MODERNA ==========
+        function mostrarToast(mensagem) {
+            let toast = document.getElementById('mapaToast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'mapaToast';
+                toast.style.cssText = `
+                    position: fixed;
+                    bottom: 24px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background: #2d3436;
+                    color: #fff;
+                    padding: 10px 22px;
+                    border-radius: 30px;
+                    font-size: 13px;
+                    font-weight: 600;
+                    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+                    z-index: 99999;
+                    pointer-events: none;
+                    transition: opacity 0.3s ease, transform 0.3s ease;
+                    opacity: 0;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                `;
+                document.body.appendChild(toast);
+            }
+            toast.innerHTML = mensagem;
+            toast.style.opacity = '1';
+            toast.style.transform = 'translateX(-50%) translateY(0)';
+            clearTimeout(toast._timer);
+            toast._timer = setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(-50%) translateY(10px)';
+            }, 4500);
+        }
+
         // ========== TRAÇADO DE TRAJETO GPS REAL ==========
         window.tracarRotaEntregador = async function(nome) {
             if (!nome || !layerHistoricoGps) return;
             layerHistoricoGps.clearLayers();
 
-            const dataSel = getDataSelecionada();
+            const selEntr = document.getElementById('filtroEntregador');
+            if (selEntr && selEntr.value !== nome) {
+                selEntr.value = nome;
+            }
+
+            let dataSel = getDataSelecionada();
+            mostrarToast(`🔍 Buscando trilha GPS de <b>${nome}</b>...`);
+
             try {
-                const snap = await window.firebaseGet(`historico_gps/${nome}/${dataSel}`);
-                const histData = snap.exists() ? snap.val() : null;
+                let histData = null;
 
+                // 1. Buscar diretamente do Firebase RTDB (onde o app do entregador salva a trilha GPS contínua)
+                try {
+                    const resFb = await fetch(`https://canoas-gas-default-rtdb.firebaseio.com/historico_gps/${encodeURIComponent(nome)}/${dataSel}.json`);
+                    if (resFb.ok) {
+                        histData = await resFb.json();
+                    }
+                } catch(e) {
+                    console.warn('Erro ao conectar ao Firebase RTDB:', e);
+                }
+
+                // 2. Se vazio ou falhou, tentar também via VPS Adapter
                 if (!histData || Object.keys(histData).length === 0) {
-                    alert(`Nenhum histórico de GPS registrado para ${nome} nesta data.`);
+                    try {
+                        if (window.firebaseGet) {
+                            const snap = await window.firebaseGet(`historico_gps/${nome}/${dataSel}`);
+                            if (snap && snap.exists()) {
+                                histData = snap.val();
+                            }
+                        }
+                    } catch(e) {}
+                }
+
+                // 3. Se ainda vazio e a data for hoje (ex: virada de meia-noite), buscar o último dia com dados disponíveis
+                let pontosValidos = histData ? Object.values(histData).filter(p => p && p.lat && p.lng && !isNaN(p.lat) && !isNaN(p.lng)) : [];
+
+                const hojeStr = new Date().toISOString().split('T')[0];
+                if (pontosValidos.length < 2 && dataSel === hojeStr) {
+                    try {
+                        const resShallow = await fetch(`https://canoas-gas-default-rtdb.firebaseio.com/historico_gps/${encodeURIComponent(nome)}.json?shallow=true`);
+                        if (resShallow.ok) {
+                            const datasObj = await resShallow.json();
+                            if (datasObj) {
+                                const datasDisp = Object.keys(datasObj).sort().reverse();
+                                const ultimaData = datasDisp.find(d => d !== dataSel);
+                                if (ultimaData) {
+                                    const resUlt = await fetch(`https://canoas-gas-default-rtdb.firebaseio.com/historico_gps/${encodeURIComponent(nome)}/${ultimaData}.json`);
+                                    if (resUlt.ok) {
+                                        const dadosUlt = await resUlt.json();
+                                        const pontosUlt = dadosUlt ? Object.values(dadosUlt).filter(p => p && p.lat && p.lng && !isNaN(p.lat) && !isNaN(p.lng)) : [];
+                                        if (pontosUlt.length >= 2) {
+                                            histData = dadosUlt;
+                                            pontosValidos = pontosUlt;
+                                            dataSel = ultimaData;
+                                            const elData = document.getElementById('filtroData');
+                                            if (elData) {
+                                                elData.value = ultimaData;
+                                                const btnHoje = document.getElementById('btnDataHoje');
+                                                if (btnHoje) btnHoje.classList.remove('active');
+                                            }
+                                            mostrarToast(`📍 Sem GPS hoje. Exibindo trajeto anterior: <b>${ultimaData}</b> (${pontosValidos.length} pontos)`);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } catch(e) {
+                        console.warn('Erro ao consultar datas anteriores:', e);
+                    }
+                }
+
+                if (pontosValidos.length < 2) {
+                    mostrarToast(`⚠️ Nenhum trajeto GPS registrado para <b>${nome}</b> em ${dataSel}.`);
                     return;
                 }
 
-                const pontos = Object.values(histData)
-                    .filter(p => p && p.lat && p.lng)
-                    .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0))
-                    .map(p => [p.lat, p.lng]);
+                const pontosOrdenados = pontosValidos
+                    .sort((a, b) => (Number(a.timestamp) || 0) - (Number(b.timestamp) || 0));
 
-                if (pontos.length < 2) {
-                    alert(`Poucos pontos de GPS registrados para ${nome}.`);
-                    return;
-                }
+                const coords = pontosOrdenados.map(p => [Number(p.lat), Number(p.lng)]);
 
-                const gpsLine = L.polyline(pontos, {
+                // 1. Linha vermelha viva contínua do trajeto do entregador
+                const gpsLine = L.polyline(coords, {
                     color: '#ff4757',
-                    weight: 4,
-                    opacity: 0.9,
-                    lineJoin: 'round'
+                    weight: 5,
+                    opacity: 0.88,
+                    lineJoin: 'round',
+                    lineCap: 'round'
                 });
                 layerHistoricoGps.addLayer(gpsLine);
 
-                // Marcador de início e fim
-                const inicioPin = L.circleMarker(pontos[0], { radius: 6, color: '#00b894', fillColor: '#00b894', fillOpacity: 1 }).bindPopup(`🚀 Início: ${nome}`);
-                const fimPin = L.circleMarker(pontos[pontos.length - 1], { radius: 7, color: '#ff4757', fillColor: '#ff4757', fillOpacity: 1 }).bindPopup(`🏁 Última Posição: ${nome}`);
-                layerHistoricoGps.addLayer(inicioPin);
-                layerHistoricoGps.addLayer(fimPin);
+                // 2. Pontos com horários e velocidades ao longo de toda a linha
+                pontosOrdenados.forEach((p, idx) => {
+                    const lat = Number(p.lat);
+                    const lng = Number(p.lng);
+                    const ts = Number(p.timestamp);
+                    const dt = ts ? new Date(ts) : null;
+                    const horaFormatada = dt ? dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '--:--:--';
+                    const dataFormatada = dt ? dt.toLocaleDateString('pt-BR') : '';
+                    const speedKm = (p.speed !== undefined && p.speed !== null && !isNaN(p.speed)) ? Math.round(Number(p.speed) * 3.6) : null;
+                    const velTexto = speedKm !== null ? `${speedKm} km/h` : 'Parado';
 
-                map.fitBounds(L.latLngBounds(pontos), { padding: [50, 50] });
+                    const isPrimeiro = (idx === 0);
+                    const isUltimo = (idx === pontosOrdenados.length - 1);
+
+                    // Estilo diferenciado para Início, Fim e Pontos de Passagem
+                    let raio = 5;
+                    let corPreenchimento = '#d63031';
+                    let bordaCor = '#ffffff';
+                    let pesoBorda = 1.5;
+
+                    if (isPrimeiro) {
+                        raio = 8;
+                        corPreenchimento = '#00b894';
+                        pesoBorda = 2.5;
+                    } else if (isUltimo) {
+                        raio = 9;
+                        corPreenchimento = '#ff4757';
+                        pesoBorda = 3;
+                    }
+
+                    const pontoDot = L.circleMarker([lat, lng], {
+                        radius: raio,
+                        fillColor: corPreenchimento,
+                        color: bordaCor,
+                        weight: pesoBorda,
+                        opacity: 1,
+                        fillOpacity: 0.95
+                    });
+
+                    // Tooltip rápido ao passar o mouse com horário e velocidade
+                    pontoDot.bindTooltip(`⏱️ <b>${horaFormatada}</b> &bull; ${velTexto}`, {
+                        direction: 'top',
+                        offset: [0, -6],
+                        className: 'leaflet-gps-tooltip'
+                    });
+
+                    // Popup detalhado ao clicar no ponto
+                    const statusPonto = isPrimeiro ? '🚀 Início do Trajeto' : (isUltimo ? '🏁 Última Posição' : '📍 Ponto de Passagem');
+                    const popupHtml = `
+                        <div style="font-family:'Outfit','Poppins',sans-serif; min-width:160px; padding:2px;">
+                            <div style="font-weight:800; color:#d63031; font-size:14px; margin-bottom:6px; display:flex; align-items:center; gap:6px; border-bottom:1px solid #f1f2f6; padding-bottom:4px;">
+                                <span>⏱️</span> <span>${horaFormatada}</span>
+                            </div>
+                            <div style="font-size:12px; color:#2d3436; margin-bottom:3px;">
+                                <b>Status:</b> <span style="color:${corPreenchimento}; font-weight:700;">${statusPonto}</span>
+                            </div>
+                            <div style="font-size:12px; color:#2d3436; margin-bottom:3px;">
+                                <b>Entregador:</b> ${nome}
+                            </div>
+                            <div style="font-size:12px; color:#2d3436; margin-bottom:3px;">
+                                <b>Velocidade:</b> <span style="color:#0984e3; font-weight:700;">${velTexto}</span>
+                            </div>
+                            <div style="font-size:11px; color:#636e72; margin-top:4px;">
+                                📍 Ponto <b>#${idx + 1}</b> de ${pontosOrdenados.length} (${dataFormatada})
+                            </div>
+                        </div>
+                    `;
+                    pontoDot.bindPopup(popupHtml);
+
+                    // Efeito interativo visual no hover (destaque azul e aumento de tamanho)
+                    if (!isPrimeiro && !isUltimo) {
+                        pontoDot.on('mouseover', function() {
+                            this.setStyle({ radius: 8, fillColor: '#0984e3', weight: 2.5 });
+                        });
+                        pontoDot.on('mouseout', function() {
+                            this.setStyle({ radius: 5, fillColor: '#d63031', weight: 1.5 });
+                        });
+                    }
+
+                    layerHistoricoGps.addLayer(pontoDot);
+                });
+
+                // Atualizar card resumo da rota
+                const cardResumo = document.getElementById('cardResumoRota');
+                if (cardResumo) {
+                    document.getElementById('resumoRotaTitulo').innerHTML = `🔴 Trilha GPS: <b>${nome}</b>`;
+                    document.getElementById('resumoRotaSubtitulo').textContent = `${coords.length} pontos de GPS mapeados (${dataSel})`;
+                    cardResumo.style.display = 'flex';
+                }
+
+                rotaAtivaBounds = L.latLngBounds(coords);
+                map.fitBounds(rotaAtivaBounds, { padding: [50, 50], maxZoom: 16 });
+                mostrarToast(`✅ Trilha GPS de <b>${nome}</b> exibida (${coords.length} pontos com horários)!`);
             } catch(e) {
                 console.error('Erro ao carregar histórico GPS:', e);
+                mostrarToast('❌ Erro ao carregar trilha GPS.');
             }
         };
 
@@ -1268,6 +1512,16 @@
 
         window.aplicarFiltrosMapa = function() {
             renderizarPedidosMapa();
+            const filtroEntr = (document.getElementById('filtroEntregador')?.value || '').trim();
+            if (filtroEntr) {
+                window.tracarRotaEntregador(filtroEntr);
+            } else {
+                if (layerHistoricoGps) layerHistoricoGps.clearLayers();
+                const cardResumo = document.getElementById('cardResumoRota');
+                if (cardResumo && cardResumo.querySelector('#resumoRotaTitulo')?.textContent?.includes('Trilha GPS')) {
+                    cardResumo.style.display = 'none';
+                }
+            }
         };
 
         window.focarNoMapa = function(lat, lng, zoom = 16) {
@@ -1285,15 +1539,58 @@
             document.getElementById('cardResumoRota').style.display = 'none';
         };
 
+        // Sincronização contínua de status do Firebase RTDB (onde o app do celular envia pings)
+        async function sincronizarStatusFirebase() {
+            try {
+                const res = await fetch('https://canoas-gas-default-rtdb.firebaseio.com/status_entregadores.json');
+                if (res.ok) {
+                    const dataFb = await res.json();
+                    if (dataFb && typeof dataFb === 'object') {
+                        Object.entries(dataFb).forEach(([key, val]) => {
+                            if (!val) return;
+                            const normKey = key.trim().toUpperCase();
+                            const stAtual = statusEntregadores[normKey] || statusEntregadores[key];
+                            const timeFb = Math.max(Number(val.ultimaVez)||0, Number(val.heartbeat)||0, Number(val.timestamp)||0);
+                            const timeAtual = stAtual ? Math.max(Number(stAtual.ultimaVez)||0, Number(stAtual.heartbeat)||0, Number(stAtual.timestamp)||0) : 0;
+                            if (!stAtual || timeFb >= timeAtual) {
+                                statusEntregadores[normKey] = { ...(stAtual || {}), ...val };
+                                statusEntregadores[key] = statusEntregadores[normKey];
+                            }
+                        });
+                        renderizarEntregadoresMapa();
+                    }
+                }
+            } catch(e) {
+                console.warn('Erro ao sincronizar status do Firebase RTDB:', e);
+            }
+        }
+
         // ========== CARREGAMENTO EM TEMPO REAL ==========
         function iniciarEscutaDados() {
             window.definirDataHoje();
 
-            // Status dos Entregadores
+            // Status dos Entregadores - VPS Socket
             window.firebaseOnValue('status_entregadores', (snap) => {
-                statusEntregadores = snap.exists() ? snap.val() : {};
+                const vpsStatus = snap.exists() ? snap.val() : {};
+                if (vpsStatus && typeof vpsStatus === 'object') {
+                    Object.entries(vpsStatus).forEach(([key, val]) => {
+                        if (!val) return;
+                        const normKey = key.trim().toUpperCase();
+                        const stAtual = statusEntregadores[normKey] || statusEntregadores[key];
+                        const timeVps = Math.max(Number(val.ultimaVez)||0, Number(val.heartbeat)||0, Number(val.timestamp)||0);
+                        const timeAtual = stAtual ? Math.max(Number(stAtual.ultimaVez)||0, Number(stAtual.heartbeat)||0, Number(stAtual.timestamp)||0) : 0;
+                        if (!stAtual || timeVps >= timeAtual) {
+                            statusEntregadores[normKey] = { ...(stAtual || {}), ...val };
+                            statusEntregadores[key] = statusEntregadores[normKey];
+                        }
+                    });
+                }
                 renderizarEntregadoresMapa();
             });
+
+            // Sincronizar com Firebase RTDB imediatamente e a cada 5 segundos
+            sincronizarStatusFirebase();
+            setInterval(sincronizarStatusFirebase, 5000);
 
             // Equipe
             window.firebaseOnValue('equipe_entregadores', (snap) => {

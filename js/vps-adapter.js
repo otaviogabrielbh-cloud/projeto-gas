@@ -119,5 +119,8 @@ window.remove = window.firebaseRemove;
 window.get = window.firebaseGet;
 window.onValue = window.firebaseOnValue;
 window.onDisconnect = window.firebaseOnDisconnect;
+window.query = (r) => r;
+window.limitToLast = (n) => ({ limit: n });
+window.orderByChild = (c) => ({ order: c });
 
 console.log('✅ VPS Adapter inicializado com sucesso (Conectado a http://179.236.224.192:3000)');

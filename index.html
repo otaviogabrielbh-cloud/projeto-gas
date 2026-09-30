@@ -15,8 +15,7 @@
         href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Poppins:wght@300;400;600&display=swap"
         rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Google Maps Places API -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBdR82ftq_X7poy1T5DRMm_rJpw08dFVaw&libraries=places&language=pt-BR&region=BR&callback=inicializarGooglePlaces" async defer></script>
+    <!-- Google Maps removido, usando OpenStreetMap -->
     <style>
         /* Google Places Autocomplete Styling */
         .pac-container {
@@ -1094,7 +1093,12 @@
         }
     </style>
     <!-- VPS Socket.IO & Adapter (Primeiros Scripts) -->
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="js/socket.io.min.js"></script>
+    <script>
+        if (typeof io === "undefined") {
+            document.write('<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"><\/script>');
+        }
+    </script>
     <script src="js/vps-adapter.js"></script>
 </head>
 
@@ -2283,7 +2287,9 @@
                 document.getElementById('loginPassword').focus();
             } else {
                 document.getElementById('delivererSection').classList.remove('hidden');
-                if (typeof window.renderizarEquipe === 'function') {
+                if (typeof window.escutarEquipe === 'function') {
+                    window.escutarEquipe();
+                } else if (typeof window.renderizarEquipe === 'function') {
                     const cache = JSON.parse(localStorage.getItem('cache_equipe') || '[]');
                     if (cache.length > 0) {
                         window.renderizarEquipe(window.equipeEntregadores && window.equipeEntregadores.length > 0 ? window.equipeEntregadores : cache);
@@ -2950,66 +2956,173 @@
             }
         });
 
-        // --- GOOGLE PLACES AUTOCOMPLETE ---
-        window.googleAutocomplete = null;
+        // --- OPENSTREETMAP (PHOTON) AUTOCOMPLETE ---
+        window.osmAutocompleteContainer = null;
         window.ultimoEnderecoCoords = null;
+        window.osmDebounceTimeout = null;
 
         window.inicializarGooglePlaces = function () {
+            // Mantemos o nome da função para não quebrar outras partes do código que a chamam
             const input = document.getElementById('endereco');
-            if (!input || !window.google || !window.google.maps || !window.google.maps.places) return;
+            if (!input) return;
 
             // Se já inicializado no elemento, não duplicar
-            if (input._googlePlacesInit) return;
-            input._googlePlacesInit = true;
+            if (input._osmInit) return;
+            input._osmInit = true;
 
-            const opcoes = {
-                componentRestrictions: { country: 'br' },
-                fields: ['address_components', 'formatted_address', 'geometry', 'name'],
-                types: ['address']
-            };
+            const container = document.createElement('div');
+            container.className = 'pac-container';
+            container.style.display = 'none';
+            container.style.position = 'absolute';
+            container.style.backgroundColor = '#ffffff';
+            container.style.zIndex = '99999';
+            container.style.borderRadius = '10px';
+            container.style.boxShadow = '0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1)';
+            container.style.border = '1px solid #cbd5e1';
+            container.style.overflow = 'hidden';
+            container.style.marginTop = '4px';
+            
+            // Inserir após o input
+            input.parentNode.style.position = 'relative'; // Garante que o absoluto fique correto
+            input.parentNode.insertBefore(container, input.nextSibling);
+            window.osmAutocompleteContainer = container;
 
-            try {
-                window.googleAutocomplete = new google.maps.places.Autocomplete(input, opcoes);
+            input.addEventListener('input', (e) => {
+                window.ultimoEnderecoCoords = null;
+                const query = e.target.value.trim();
+                
+                if (query.length < 3) {
+                    container.style.display = 'none';
+                    return;
+                }
 
-                // Foco geográfico na Grande BH (Belo Horizonte, Contagem, Betim, etc.)
-                const boundsBH = new google.maps.LatLngBounds(
-                    new google.maps.LatLng(-20.10, -44.20),
-                    new google.maps.LatLng(-19.70, -43.75)
-                );
-                window.googleAutocomplete.setBounds(boundsBH);
+                clearTimeout(window.osmDebounceTimeout);
+                window.osmDebounceTimeout = setTimeout(async () => {
+                    try {
+                        // Usando Photon (OpenStreetMap)
+                        // Foco na Grande BH (Belo Horizonte, Betânia, Contagem)
+                        const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5&lat=-19.9208&lon=-43.9378`);
+                        const data = await res.json();
+                        
+                        container.innerHTML = '';
+                        if (data.features && data.features.length > 0) {
+                            data.features.forEach(feat => {
+                                const p = feat.properties;
+                                const coord = feat.geometry.coordinates; // [lon, lat]
+                                
+                                const name = p.name || '';
+                                const street = p.street || '';
+                                const housenumber = p.housenumber || '';
+                                const bairro = p.district || p.suburb || p.neighbourhood || p.locality || p.quarter || p.city_district || '';
+                                const city = p.city || p.town || p.municipality || '';
+                                let state = p.state || '';
+                                if (state === 'Minas Gerais') state = 'MG';
+                                else if (state === 'São Paulo') state = 'SP';
+                                else if (state === 'Rio de Janeiro') state = 'RJ';
 
-                window.googleAutocomplete.addListener('place_changed', () => {
-                    const place = window.googleAutocomplete.getPlace();
-                    if (!place) return;
+                                // Identificar logradouro principal
+                                let logradouro = street || name;
+                                if (logradouro === bairro && street) logradouro = street;
+                                if (!logradouro) return;
 
-                    if (place.geometry && place.geometry.location) {
-                        window.ultimoEnderecoCoords = {
-                            lat: place.geometry.location.lat(),
-                            lng: place.geometry.location.lng()
-                        };
-                        console.log("📍 Coordenadas do Google Places capturadas:", window.ultimoEnderecoCoords);
+                                // Bairro normalizado
+                                const bairroValido = (bairro && bairro !== logradouro && bairro !== city) ? bairro : '';
+
+                                // Cidade e UF
+                                const cidadeUf = [city, state].filter(Boolean).join(' - ');
+
+                                // Item visual estilizado com destaque para o BAIRRO
+                                const item = document.createElement('div');
+                                item.className = 'pac-item';
+                                item.style.padding = '10px 14px';
+                                item.style.cursor = 'pointer';
+                                item.style.borderBottom = '1px solid #f1f5f9';
+                                item.style.transition = 'background-color 0.15s ease';
+                                item.style.display = 'flex';
+                                item.style.flexDirection = 'column';
+                                item.style.gap = '2px';
+
+                                item.addEventListener('mouseenter', () => {
+                                    item.style.backgroundColor = '#f0fdf4';
+                                });
+                                item.addEventListener('mouseleave', () => {
+                                    item.style.backgroundColor = '#ffffff';
+                                });
+
+                                item.innerHTML = `
+                                    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                                        <div style="display:flex; align-items:center; gap:6px;">
+                                            <span style="font-size:14px;">📍</span>
+                                            <span class="pac-item-query" style="font-weight:700; color:#1e293b; font-size:13.5px;">${logradouro}${housenumber ? ', ' + housenumber : ''}</span>
+                                        </div>
+                                        ${bairroValido ? `<span style="background:#e0f2fe; color:#0369a1; padding:2px 8px; border-radius:6px; font-size:11px; font-weight:700; white-space:nowrap; border:1px solid #bae6fd;">🏘️ ${bairroValido}</span>` : ''}
+                                    </div>
+                                    <div style="font-size:11.5px; color:#64748b; margin-left:20px;">
+                                        ${[bairroValido ? 'Bairro ' + bairroValido : '', cidadeUf].filter(Boolean).join(' &bull; ')}
+                                    </div>
+                                `;
+                                
+                                item.addEventListener('mousedown', () => {
+                                    // Se o usuário já digitou número no input, preserva
+                                    const valorAtual = input.value.trim();
+                                    const matchNum = valorAtual.match(/,\s*(\d+[a-zA-Z\s\/-]*)$/) || valorAtual.match(/\s+(\d+[a-zA-Z\s\/-]*)$/);
+                                    const numeroFinal = matchNum ? matchNum[1].trim() : (housenumber || '');
+
+                                    let partes = [];
+                                    if (numeroFinal) {
+                                        partes.push(`${logradouro}, ${numeroFinal}`);
+                                    } else {
+                                        partes.push(logradouro);
+                                    }
+
+                                    if (bairroValido) {
+                                        partes.push(bairroValido);
+                                    }
+
+                                    if (cidadeUf) {
+                                        partes.push(cidadeUf);
+                                    }
+
+                                    // Formato padrão Canoas Gás: "Rua Exemplo, 123 - Bairro, Belo Horizonte - MG"
+                                    if (partes.length >= 2) {
+                                        input.value = `${partes[0]} - ${partes.slice(1).join(', ')}`;
+                                    } else {
+                                        input.value = partes.join(', ');
+                                    }
+
+                                    window.ultimoEnderecoCoords = { lat: coord[1], lng: coord[0] };
+                                    container.style.display = 'none';
+                                    console.log("📍 Coordenadas OpenStreetMap capturadas:", window.ultimoEnderecoCoords, "Bairro:", bairroValido);
+                                    
+                                    const sug = document.getElementById('enderecoSuggestion');
+                                    if (sug) sug.innerText = '';
+                                });
+                                container.appendChild(item);
+                            });
+                            container.style.display = 'block';
+                            container.style.width = input.offsetWidth + 'px';
+                            // Posição
+                            container.style.top = (input.offsetTop + input.offsetHeight) + 'px';
+                            container.style.left = input.offsetLeft + 'px';
+                        } else {
+                            container.style.display = 'none';
+                        }
+                    } catch (err) {
+                        console.error('Erro na API OSM Photon:', err);
                     }
+                }, 400); // debounce de 400ms
+            });
 
-                    if (place.formatted_address) {
-                        let enderecoFormatado = place.formatted_address
-                            .replace(/,\s*Brasil$/i, '')
-                            .replace(/,\s*Brazil$/i, '')
-                            .replace(/,\s*State of Minas Gerais/i, ', MG')
-                            .replace(/,\s*Minas Gerais/i, ', MG');
-                        input.value = enderecoFormatado;
-                    }
-
-                    const sug = document.getElementById('enderecoSuggestion');
-                    if (sug) sug.innerText = '';
-                });
-
-                input.addEventListener('input', () => {
-                    // Limpar coordenadas salvas se o usuário alterar manualmente o texto
-                    window.ultimoEnderecoCoords = null;
-                });
-            } catch (err) {
-                console.warn("Aviso ao inicializar Google Places Autocomplete:", err);
-            }
+            input.addEventListener('blur', () => {
+                // Timeout para permitir o click no item antes de sumir
+                setTimeout(() => { container.style.display = 'none'; }, 200);
+            });
+            input.addEventListener('focus', () => {
+                if (container.innerHTML !== '') {
+                    container.style.width = input.offsetWidth + 'px';
+                    container.style.display = 'block';
+                }
+            });
         };
     </script>
 
@@ -3064,7 +3177,7 @@
 
         // --- TEAM MANAGEMENT LOGIC ---
         function escutarEquipe() {
-            // Renderização imediata pelo cache para não travar em 'Carregando equipe...'
+            // 1. Renderização imediata pelo cache para não travar em 'Carregando equipe...'
             try {
                 const cacheInicial = JSON.parse(localStorage.getItem('cache_equipe') || '[]');
                 if (cacheInicial && cacheInicial.length > 0) {
@@ -3075,26 +3188,68 @@
                 console.warn("Erro ao ler cache_equipe:", e);
             }
 
-            const equipeRef = ref(remoteDb, 'equipe_entregadores');
-            onValue(equipeRef, (snapshot) => {
-                const data = snapshot.val();
-                const equipe = [];
-                if (data) {
-                    Object.keys(data).forEach(key => {
-                        equipe.push({ id: key, nome: data[key].nome });
+            // 2. Se não houver nada no cache, renderiza imediatamente a equipe padrão
+            if (!window.equipeEntregadores || window.equipeEntregadores.length === 0) {
+                const equipePadrao = [
+                    { id: '-OjvjRkcVdX4R9JWER3Q', nome: 'OTAVIO GABRIEL' },
+                    { id: '-OjvjVmOAa7exH33trvl', nome: 'ISABELLA/GIL' },
+                    { id: '-OmFDTct-88_jlam8RV6', nome: 'PESQUISA DE GAS' },
+                    { id: '-Ou7lTiqH-4gnxzqunKw', nome: 'VICTOR GABRIEL' },
+                    { id: '-OvMEbxBKkwhhPnYz99U', nome: 'ALEX ARAUJO' }
+                ];
+                window.equipeEntregadores = equipePadrao;
+                renderizarEquipe(equipePadrao);
+            }
+
+            // 3. Ouvir via VPS Adapter em tempo real
+            try {
+                if (typeof ref === 'function' && typeof onValue === 'function') {
+                    const equipeRef = ref(remoteDb, 'equipe_entregadores');
+                    onValue(equipeRef, (snapshot) => {
+                        const data = snapshot ? snapshot.val() : null;
+                        const equipe = [];
+                        if (data) {
+                            Object.keys(data).forEach(key => {
+                                equipe.push({ id: key, nome: data[key].nome });
+                            });
+                        }
+                        if (equipe.length > 0) {
+                            window.equipeEntregadores = equipe;
+                            localStorage.setItem('cache_equipe', JSON.stringify(equipe));
+                            console.log("👥 Equipe atualizada via VPS:", equipe.length, "entregadores.");
+                            renderizarEquipe(equipe);
+                            if (typeof renderizarTabelaPorData === 'function') {
+                                renderizarTabelaPorData();
+                            }
+                        }
                     });
                 }
-                window.equipeEntregadores = equipe; // Sincroniza com o global
-                localStorage.setItem('cache_equipe', JSON.stringify(equipe)); // Backup local
-                console.log("👥 Equipe carregada para edição:", equipe.length, "entregadores.");
-                renderizarEquipe(equipe);
-                
-                // Forçar re-renderização da tabela para preencher os selects de edição
-                if (typeof renderizarTabelaPorData === 'function') {
-                    renderizarTabelaPorData();
-                }
-            });
+            } catch (err) {
+                console.warn("Aviso ao escutar equipe no remoteDb:", err);
+            }
+
+            // 4. Fallback direto via HTTPS ao Firebase RTDB (caso a VPS demore para responder)
+            fetch('https://canoas-gas-default-rtdb.firebaseio.com/equipe_entregadores.json')
+                .then(r => r.json())
+                .then(data => {
+                    if (data) {
+                        const equipeFb = Object.keys(data).map(key => ({ id: key, nome: data[key].nome }));
+                        if (equipeFb.length > 0) {
+                            window.equipeEntregadores = equipeFb;
+                            localStorage.setItem('cache_equipe', JSON.stringify(equipeFb));
+                            renderizarEquipe(equipeFb);
+                            if (typeof renderizarTabelaPorData === 'function') {
+                                renderizarTabelaPorData();
+                            }
+                        }
+                    }
+                })
+                .catch(e => console.warn("Fallback Firebase equipe:", e));
         }
+        window.escutarEquipe = escutarEquipe;
+
+        // Iniciar escuta da equipe imediatamente ao carregar a página
+        setTimeout(escutarEquipe, 100);
 
         function renderizarEquipe(equipe) {
             // Helper: cria botão seguro via DOM (sem interpolação de dados no onclick)
@@ -6184,14 +6339,17 @@
                     return t;
                 };
 
-                const urlApi = localStorage.getItem('wp_url') || 'http://localhost:3000/send-message';
+                let urlApi = localStorage.getItem('wp_url');
+                if (!urlApi || urlApi.includes('localhost') || urlApi.includes(':3000')) {
+                    urlApi = 'http://179.236.224.192:3001/send-message';
+                }
                 const autoCliente = localStorage.getItem('wp_auto_cliente') === 'true';
                 const autoEntregador = localStorage.getItem('wp_auto_entregador') === 'true';
                 
                 const msgCriacaoCliente = localStorage.getItem('wp_msg_cliente');
                 const msgCriacaoEntregador = localStorage.getItem('wp_msg_entregador');
 
-                // Função para adicionar à Fila da Nuvem (Firebase) garantindo envio pelo Notebook
+                // Função para adicionar à Fila da Nuvem (Firebase / VPS) garantindo envio pelo servidor
                 const enfileirarMensagemNuvem = (telefone, mensagem, tipo, destinatario) => {
                     let itemRef = null;
                     if (window.firebasePush && window.firebaseRef && window.remoteDb) {
@@ -6222,18 +6380,25 @@
                         let msgCliente = substituirVariaveis(msgCriacaoCliente) || textoCliente;
                         const filaRefCli = enfileirarMensagemNuvem(telLimpo, msgCliente, 'cliente', dados.cliente || 'Cliente');
 
-                        // Tenta envio direto se o servidor estiver rodando nesta mesma máquina
+                        // Preparar payload com suporte a anexo da logo oficial
+                        const payloadCliente = { phone: '55' + telLimpo, message: msgCliente };
+                        const anexarLogo = localStorage.getItem('wp_anexar_logo_cliente') !== 'false';
+                        if (anexarLogo && window.LOGO_PNG_BASE64) {
+                            payloadCliente.imageBase64 = localStorage.getItem('custom_logo_base64') || window.LOGO_PNG_BASE64;
+                            payloadCliente.caption = msgCliente;
+                        }
+
+                        // Tenta envio direto para o VPS 24h
                         fetch(urlApi, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ phone: '55' + telLimpo, message: msgCliente })
+                            body: JSON.stringify(payloadCliente)
                         }).then(res => {
                             if (res.ok && filaRefCli && window.firebaseUpdate) {
-                                // Se já enviou diretamente, marca na fila para não reenviar
                                 window.firebaseUpdate(filaRefCli, { status: 'enviado', enviadoDireto: true, enviadoEm: Date.now() });
                             }
                         }).catch(e => {
-                            console.log("ℹ️ Envio direto não conectado; a fila do Firebase assumirá o envio pelo Notebook.");
+                            console.log("ℹ️ Envio direto conectado via fila do VPS.");
                         });
                     }
                 }

@@ -273,16 +273,19 @@ window.obterCoordenadasEndereco = async function (endereco) {
 
     for (const q of tentativas) {
         try {
-            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`);
+            const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=1`);
             const data = await res.json();
-            if (data && data.length > 0) {
-                const coords = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+            if (data && data.features && data.features.length > 0) {
+                const coords = { 
+                    lat: parseFloat(data.features[0].geometry.coordinates[1]), 
+                    lng: parseFloat(data.features[0].geometry.coordinates[0]) 
+                };
                 window.coordenadasMemoriaCache[cleanAddr] = coords;
                 try { localStorage.setItem(cacheKey, JSON.stringify(coords)); } catch (e) {}
                 return coords;
             }
         } catch (e) {
-            console.warn("Erro ao geocodificar:", q, e);
+            console.warn("Erro ao geocodificar com Photon:", q, e);
         }
         await new Promise(r => setTimeout(r, 200));
     }

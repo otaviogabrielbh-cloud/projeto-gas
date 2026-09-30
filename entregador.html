@@ -160,7 +160,12 @@
         }
     </style>
     <!-- VPS Socket.IO & Adapter (Primeiros Scripts) -->
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="js/socket.io.min.js"></script>
+    <script>
+        if (typeof io === 'undefined') {
+            document.write('<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"><\/script>');
+        }
+    </script>
     <script src="js/vps-adapter.js"></script>
 </head>
 
@@ -268,7 +273,7 @@
                     style="display: none; text-align: center; margin: 10px 0; padding: 15px; background: #f5f5f5; border-radius: 10px; border: 1px solid #ddd;">
                     <p style="margin: 0 0 10px 0; font-weight: bold; color: #00a884; font-size: 14px;">📱 QR Code PIX
                     </p>
-                    <img src="https://github.com/otaviogabrielbh-cloud/projeto-gas/raw/refs/heads/main/PIX.png"
+                    <img src="PIX.png"
                         alt="QR Code PIX"
                         style="max-width: 200px; width: 100%; border: 3px solid #00a884; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
                 </div>
@@ -377,7 +382,7 @@
                     style="display: none; text-align: center; margin: 10px 0; padding: 15px; background: #f5f5f5; border-radius: 10px; border: 1px solid #ddd;">
                     <p style="margin: 0 0 10px 0; font-weight: bold; color: #00a884; font-size: 14px;">📱 QR Code PIX
                     </p>
-                    <img src="https://github.com/otaviogabrielbh-cloud/projeto-gas/raw/refs/heads/main/PIX.png"
+                    <img src="PIX.png"
                         alt="QR Code PIX"
                         style="max-width: 200px; width: 100%; border: 3px solid #00a884; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
                 </div>
@@ -753,18 +758,21 @@
                 }
             } catch (e) {}
 
-            try {
-                // Busca no OpenStreetMap / Nominatim
-                let res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(cleanAddr + ', Belo Horizonte, MG, Brasil')}`);
+                        try {
+                // Busca no Photon (Komoot / OpenStreetMap - sem bloqueio 403)
+                let res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(cleanAddr + ', Belo Horizonte, MG')}&limit=1`);
                 let data = await res.json();
 
-                if (!data || data.length === 0) {
-                    res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(cleanAddr + ', Brasil')}`);
+                if (!data || !data.features || data.features.length === 0) {
+                    res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(cleanAddr)}&limit=1`);
                     data = await res.json();
                 }
 
-                if (data && data.length > 0) {
-                    const coords = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+                if (data && data.features && data.features.length > 0) {
+                    const coords = { 
+                        lat: parseFloat(data.features[0].geometry.coordinates[1]), 
+                        lng: parseFloat(data.features[0].geometry.coordinates[0]) 
+                    };
                     window.coordenadasMemoriaCache[cleanAddr] = coords;
                     try {
                         localStorage.setItem(cacheKey, JSON.stringify(coords));
@@ -1021,7 +1029,937 @@
         });
     </script>
 
-    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { 
+            getDatabase, 
+            ref as origRef, 
+            onValue as origOnValue, 
+            update as origUpdate, 
+            get as origGet, 
+            push as origPush, 
+            onDisconnect as origOnDisconnect, 
+            query as origQuery, 
+            limitToLast 
+        } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyB-4XspbY5GalueBG8JGUJ7BfdQvPh8d1c",
+            authDomain: "canoas-gas.firebaseapp.com",
+            databaseURL: "https://canoas-gas-default-rtdb.firebaseio.com",
+            projectId: "canoas-gas",
+            storageBucket: "canoas-gas.firebasestorage.app",
+            messagingSenderId: "657432003828",
+            appId: "1:657432003828:web:40c6eca9096896f955caa1"
+        };
+
+        let fbDb = null;
+        try {
+            const app = initializeApp(firebaseConfig);
+            fbDb = getDatabase(app);
+        } catch (e) {
+            console.warn("Firebase RTDB init warning:", e);
+        }
+
+        const isVps = !!(window.vpsSocket && window.remoteDb);
+        const remoteDb = isVps ? window.remoteDb : fbDb;
+        const ref = isVps ? window.firebaseRef : origRef;
+        const update = isVps ? window.firebaseUpdate : origUpdate;
+        const push = isVps ? window.firebasePush : origPush;
+        const get = isVps ? window.firebaseGet : origGet;
+        const onValue = isVps ? window.firebaseOnValue : origOnValue;
+        const onDisconnect = isVps ? window.firebaseOnDisconnect : origOnDisconnect;
+        const query = (r, ...args) => (isVps ? r : origQuery(r, ...args));
+
+        window.remoteDb = remoteDb;
+        window.firebaseUpdate = update;
+        window.firebaseRef = ref;
+        window.firebasePush = push;
+        window.firebaseGet = get;
+
+        window.iniciarEscutaTempoReal = function () {
+            const pedidosRef = query(ref(remoteDb, 'pedidos_realtime'), limitToLast(200));
+            onValue(pedidosRef, (snapshot) => {
+                const data = snapshot.val();
+                let todosPedidos = [];
+                if (data) {
+                    Object.keys(data).forEach(key => {
+                        todosPedidos.push({ id: key, ...data[key] });
+                    });
+                }
+                window.pedidosCache = todosPedidos;
+                window.renderizarTabelaPorData();
+            });
+
+            // Escutar nó 'clientes'
+            const clientesRef = ref(remoteDb, 'clientes');
+            onValue(clientesRef, (snapshot) => {
+                const data = snapshot.val();
+                window.clientesCadastradosGlobais = data || {};
+                if (typeof atualizarDatalistVenda === 'function') atualizarDatalistVenda();
+            });
+
+            // Configurar OnDisconnect
+            const nome = localStorage.getItem('userName');
+            if (nome) {
+                const statusRef = ref(remoteDb, `status_entregadores/${nome}`);
+                onDisconnect(statusRef).update({
+                    online: false,
+                    ultimaVez: Date.now()
+                });
+            }
+        }
+
+
+
+        let renderTimeout = null;
+        window.atualizarDistanciasUI = function () {
+            if (renderTimeout) clearTimeout(renderTimeout);
+            renderTimeout = setTimeout(() => {
+                if (typeof window.renderizarTabelaPorData === 'function') {
+                    window.renderizarTabelaPorData();
+                }
+            }, 300);
+        };
+
+        // Fila de geocodificação assíncrona
+        let geocodificando = false;
+        async function processarFilaGeocodificacao(pedidos) {
+            if (geocodificando) return;
+            geocodificando = true;
+            let novaCoordenadaObtida = false;
+
+            for (const p of pedidos) {
+                if (!p.endereco) continue;
+                const cleanAddr = p.endereco
+                    .replace(/\b(apto|apartamento|bloco|casa|fundos|sala|loja|quadra|lote|portaria)\b.*$/i, '')
+                    .replace(/[^\w\s]/gi, ' ')
+                    .replace(/\s+/g, ' ')
+                    .trim()
+                    .toUpperCase();
+
+                if (cleanAddr && !window.coordenadasMemoriaCache[cleanAddr]) {
+                    const coords = await window.obterCoordenadasEndereco(p.endereco);
+                    if (coords) {
+                        novaCoordenadaObtida = true;
+                    }
+                    await new Promise(r => setTimeout(r, 350));
+                }
+            }
+
+            geocodificando = false;
+            if (novaCoordenadaObtida) {
+                window.atualizarDistanciasUI();
+            }
+        }
+
+        function renderizarBannerSugestao(maisProximo) {
+            const container = document.getElementById('containerSugestaoProxima');
+            if (container) container.innerHTML = '';
+        }
+
+        window.iniciarRotaDireta = function(id, encodedEndereco) {
+            const endereco = decodeURIComponent(encodedEndereco);
+            window.statusPedido(id, 'Em Rota');
+            window.open(`https://waze.com/ul?q=${encodeURIComponent(endereco)}`, '_blank');
+        };
+
+        window.abrirPedidoPorId = function(id) {
+            const p = (window.pedidosCache || []).find(item => item.id === id);
+            if (p) window.mostrarDetalhesPedido(p);
+        };
+
+        window.renderizarTabelaPorData = function () {
+            const container = document.getElementById('containerCardsMobile');
+            const statusFiltro = document.getElementById('filtroStatusEntregador').value;
+            const ordemFiltro = document.getElementById('filtroOrdemEntregador')?.value || 'prioridade';
+            const userName = localStorage.getItem('userName');
+
+            if (!container || !userName) return;
+
+            const now = new Date();
+            const todayStr = now.toLocaleDateString('pt-BR');
+
+            // 1. Filtrar pedidos do dia para este entregador
+            const pedidos = (window.pedidosCache || []).filter(p => {
+                const dataPedidoStr = (p.data || '').split(',')[0].trim();
+                if (dataPedidoStr !== todayStr) return false;
+
+                const entregadorMatch = (p.entregador || '').trim().toUpperCase() === userName.trim().toUpperCase();
+                if (!entregadorMatch) return false;
+
+                const statusNormalizado = (p.statusEntrega || 'Pendente').trim().toUpperCase();
+                const isPendente = ['PENDENTE', 'EM ROTA', 'INICIADO', 'PRIORIZAR'].includes(statusNormalizado);
+
+                if (statusFiltro === 'pendente' && !isPendente) return false;
+                if (statusFiltro === 'concluido' && isPendente) return false;
+
+                return true;
+            });
+
+            // 2. Lógica de Alerta de Novo Pedido (Comparação de IDs)
+            const pendentesAtuais = pedidos.filter(p => {
+                const s = (p.statusEntrega || 'Pendente').trim().toUpperCase();
+                return ['PENDENTE', 'EM ROTA', 'INICIADO', 'PRIORIZAR'].includes(s);
+            });
+
+            // Usamos um Set para comparar IDs e evitar duplicados
+            const idsAtuais = pendentesAtuais.map(p => p.id);
+            const pendenteAnteriorStr = localStorage.getItem('entregador_ids_pendentes') || '[]';
+            const idsAnteriores = JSON.parse(pendenteAnteriorStr);
+
+            // Se houver algum ID novo que não estava na lista anterior, dispara alerta
+            const novosPedidos = idsAtuais.filter(id => !idsAnteriores.includes(id));
+
+            if (novosPedidos.length > 0) {
+                console.log("🔔 Novos pedidos detectados:", novosPedidos);
+                if (window.tocarAlertaSonoro) window.tocarAlertaSonoro();
+
+                // Mostrar banner de sistema (redundância PWA)
+                if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+                    navigator.serviceWorker.controller.postMessage({
+                        type: 'NOTIFICAR_PEDIDO',
+                        body: `🛵 ${novosPedidos.length} novo(s) pedido(s) atribuído(s) a você!`,
+                        url: './entregador.html'
+                    });
+                }
+            }
+
+            // Salvar estado atual para a próxima comparação
+            localStorage.setItem('entregador_ids_pendentes', JSON.stringify(idsAtuais));
+
+            // 3. Iniciar resolução assíncrona de coordenadas para pedidos pendentes
+            if (statusFiltro === 'pendente' && pendentesAtuais.length > 0) {
+                processarFilaGeocodificacao(pendentesAtuais);
+            }
+
+            // 4. Calcular distâncias com base na posição atual do GPS
+            const posAtual = window.posicaoEntregadorAtual;
+            let maisProximo = null;
+            let menorDistancia = Infinity;
+
+            pedidos.forEach(p => {
+                p.distanciaMetros = null;
+                p.distanciaFormatada = '';
+
+                if (p.endereco && posAtual && posAtual.lat && posAtual.lng) {
+                    const cleanAddr = p.endereco
+                        .replace(/\b(apto|apartamento|bloco|casa|fundos|sala|loja|quadra|lote|portaria)\b.*$/i, '')
+                        .replace(/[^\w\s]/gi, ' ')
+                        .replace(/\s+/g, ' ')
+                        .trim()
+                        .toUpperCase();
+                    const coords = window.coordenadasMemoriaCache[cleanAddr];
+                    if (coords && coords.lat && coords.lng) {
+                        const dist = window.calcularDistanciaMetros(posAtual.lat, posAtual.lng, coords.lat, coords.lng);
+                        if (dist !== null && !isNaN(dist)) {
+                            p.distanciaMetros = dist;
+                            p.distanciaFormatada = window.formatarDistancia(dist);
+
+                            const s = (p.statusEntrega || 'Pendente').trim().toUpperCase();
+                            const isPendente = ['PENDENTE', 'EM ROTA', 'INICIADO', 'PRIORIZAR'].includes(s);
+                            if (isPendente && dist < menorDistancia) {
+                                menorDistancia = dist;
+                                maisProximo = p;
+                            }
+                        }
+                    }
+                }
+            });
+
+            // 5. Renderizar banner da entrega mais próxima
+            if (statusFiltro === 'pendente' && pendentesAtuais.length > 0) {
+                const sugestao = maisProximo || pendentesAtuais[0];
+                renderizarBannerSugestao(sugestao);
+            } else {
+                renderizarBannerSugestao(null);
+            }
+
+            // 6. Ordenar lista
+            if (ordemFiltro === 'proximidade') {
+                pedidos.sort((a, b) => {
+                    const aPrio = (a.statusEntrega || '').trim().toUpperCase() === 'PRIORIZAR' ? 1 : 0;
+                    const bPrio = (b.statusEntrega || '').trim().toUpperCase() === 'PRIORIZAR' ? 1 : 0;
+                    if (aPrio !== bPrio) return bPrio - aPrio;
+
+                    const aDist = a.distanciaMetros !== null ? a.distanciaMetros : Infinity;
+                    const bDist = b.distanciaMetros !== null ? b.distanciaMetros : Infinity;
+                    if (aDist !== bDist) return aDist - bDist;
+
+                    return (b.timestamp || 0) - (a.timestamp || 0);
+                });
+            } else {
+                // Padrão: PRIORIZAR primeiro, depois mais recentes
+                pedidos.sort((a, b) => {
+                    const aPrio = (a.statusEntrega || '').trim().toUpperCase() === 'PRIORIZAR' ? 1 : 0;
+                    const bPrio = (b.statusEntrega || '').trim().toUpperCase() === 'PRIORIZAR' ? 1 : 0;
+                    if (aPrio !== bPrio) return bPrio - aPrio;
+                    return (b.timestamp || 0) - (a.timestamp || 0);
+                });
+            }
+
+            // 7. Renderizar a Tela
+            container.innerHTML = '';
+            document.getElementById('totalPedidos').innerText = pedidos.length;
+
+            if (pedidos.length === 0) {
+                container.innerHTML = `<div style="text-align:center; padding: 40px 20px; color: #888;">
+                    <p style="font-size: 32px; margin-bottom: 10px;">🛵</p>
+                    <p style="font-weight: 600;">Nenhum pedido ${statusFiltro === 'pendente' ? 'pendente' : 'concluído'} no momento.</p>
+                </div>`;
+                return;
+            }
+
+            pedidos.forEach(p => {
+                const isMaisPerto = maisProximo && p.id === maisProximo.id;
+                container.appendChild(criarCardPedido(p, isMaisPerto));
+            });
+        };
+
+        function calcularTempo(timestamp) {
+            if (!timestamp) return '0 min';
+            const diff = Date.now() - timestamp;
+            const min = Math.floor(diff / 60000);
+            return `${min} min`;
+        }
+
+        function getClassCorTempo(timestamp) {
+            if (!timestamp) return 'tempo-recente'; // Verde
+            const diff = Date.now() - timestamp;
+            const min = Math.floor(diff / 60000);
+
+            if (min < 30) return 'tempo-recente'; // < 30 min (Verde)
+            if (min < 60) return 'tempo-atencao'; // 30-60 min (Amarelo)
+            return 'tempo-urgente'; // > 60 min (Vermelho)
+        }
+
+        function criarCardPedido(p, isMaisProximo) {
+            const card = document.createElement('div');
+            card.className = 'pedido-card';
+            const status = p.statusEntrega || 'Pendente';
+            const statusClass = `status-${status.toLowerCase().replace('í', 'i').replace(/\s+/g, '-')}`;
+
+            // Calcular tempo e cor
+            const tempoDecorrido = calcularTempo(p.timestamp);
+            const classeTempo = getClassCorTempo(p.timestamp);
+            const isFinalizado = status === 'Concluída' || status === 'Cancelada';
+
+            // Aplicar classe de tempo se não for finalizado
+            if (!isFinalizado) {
+                card.classList.add(classeTempo);
+            }
+
+            if (status.trim().toUpperCase() === 'PRIORIZAR') {
+                card.classList.add('prioridade');
+            }
+
+            const badgeDistanciaHtml = p.distanciaFormatada ? `<span class="badge-distancia">📍 ${p.distanciaFormatada}</span>` : '';
+            const badgeMaisPertoHtml = (isMaisProximo && !isFinalizado) ? `<span class="badge-mais-proximo">🎯 MAIS PERTO</span>` : '';
+
+            // HTML Do Card
+            card.innerHTML = `
+                <div class="pedido-card-header">
+                    <div class="pedido-card-cliente">👤 ${p.cliente}</div>
+                    <div class="pedido-card-valor">R$ ${p.valor}</div>
+                </div>
+                <div class="pedido-card-info">
+                    <div class="pedido-card-row"><span class="pedido-card-icon">📍</span><span class="pedido-card-value">${p.endereco}</span></div>
+                    <div class="pedido-card-row"><span class="pedido-card-icon">📦</span><span class="pedido-card-value">${p.produto}</span></div>
+                    ${p.informacoes ? `<div class="pedido-card-row"><span class="pedido-card-icon">📝</span><span class="pedido-card-value">${p.informacoes}</span></div>` : ''}
+                </div>
+                <div class="pedido-card-footer">
+                    <span class="badge-status ${statusClass}">${status === 'Em Rota' ? 'INICIADO' : (status === 'Priorizar' ? 'PRIORIZAR' : status)}</span>
+                    ${badgeDistanciaHtml}
+                    ${badgeMaisPertoHtml}
+                    ${!isFinalizado ? `<span class="badge-tempo ${classeTempo}">⏱️ ${tempoDecorrido}</span>` : ''}
+                    <span class="pedido-card-tap-hint">👆 Detalhes</span>
+                </div>
+            `;
+            card.onclick = () => window.mostrarDetalhesPedido(p);
+            return card;
+        }
+
+        window.mostrarDetalhesPedido = function (p) {
+            const modal = document.getElementById('modalPedidoDetalhes');
+            document.getElementById('detalhesConteudo').innerHTML = `
+                <div class="detalhe-item"><div class="detalhe-label">CLIENTE</div><div class="detalhe-valor">${p.cliente}</div></div>
+                <div class="detalhe-item">
+                    <div class="detalhe-label">TELEFONE</div>
+                    <div class="detalhe-valor" style="display: flex; align-items: center; justify-content: space-between;">
+                        <span>${p.telefone || '-'}</span>
+                        ${p.telefone ? `
+                            <a href="https://wa.me/55${p.telefone.replace(/\D/g, '')}" target="_blank" 
+                               style="background: #25d366; color: white; text-decoration: none; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: bold; display: flex; align-items: center; gap: 4px;">
+                                💬 WhatsApp
+                            </a>
+                        ` : ''}
+                    </div>
+                </div>
+                <div class="detalhe-item"><div class="detalhe-label">ENDEREÇO</div><div class="detalhe-valor">${p.endereco}</div></div>
+                <div class="detalhe-item"><div class="detalhe-label">PRODUTO</div><div class="detalhe-valor">${p.produto}</div></div>
+                <div class="detalhe-item"><div class="detalhe-label">PAGAMENTO</div><div class="detalhe-valor">${p.pagamento}</div></div>
+                <div class="detalhe-item"><div class="detalhe-label">VALOR</div><div class="detalhe-valor">R$ ${p.valor}</div></div>
+                ${p.informacoes ? `
+                    <div class="detalhe-item" style="background: #fff9db; border-radius: 8px; padding: 10px; border: 1px solid #ffe066;">
+                        <div class="detalhe-label" style="color: #f08c00;">📝 OBSERVAÇÕES / REFERÊNCIA</div>
+                        <div class="detalhe-valor" style="font-weight: bold; color: #5c940d;">${p.informacoes}</div>
+                    </div>
+                ` : ''}
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px;">
+                    <button class="btn-waze" style="width:100%;" 
+                        data-status="${p.statusEntrega}" data-endereco="${p.endereco.replace(/"/g, '&quot;')}"
+                        onclick="(function(btn){ const s=btn.getAttribute('data-status'); const e=btn.getAttribute('data-endereco'); if(s==='Em Rota'){window.open('https://waze.com/ul?q='+encodeURIComponent(e),'_blank')}else{alert('⚠️ Inicie a entrega antes de abrir a rota!')} })(this)">
+                        📍 WAZE
+                    </button>
+                    <button class="btn-maps" style="width:100%; background: #4285F4; color: white; border: none; padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;"
+                        data-status="${p.statusEntrega}" data-endereco="${p.endereco.replace(/"/g, '&quot;')}"
+                        onclick="(function(btn){ const s=btn.getAttribute('data-status'); const e=btn.getAttribute('data-endereco'); if(s==='Em Rota'){window.open('https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(e),'_blank')}else{alert('⚠️ Inicie a entrega antes de abrir a rota!')} })(this)">
+                        🌍 MAPS
+                    </button>
+                </div>
+            `;
+
+            const isFinalizado = p.statusEntrega === 'Concluída' || p.statusEntrega === 'Cancelada';
+            document.querySelector('.actions-footer').style.display = isFinalizado ? 'none' : 'flex';
+
+            const btnIniciar = document.getElementById('btnIniciarEntrega');
+            const btnConcluir = document.getElementById('btnConcluirEntrega');
+
+            btnIniciar.style.display = p.statusEntrega === 'Em Rota' ? 'none' : 'block';
+            btnConcluir.style.display = p.statusEntrega === 'Em Rota' ? 'block' : 'none';
+
+            btnIniciar.onclick = () => {
+                window.statusPedido(p.id, 'Em Rota');
+                if (typeof window.forcarCapturaGPSImediata === 'function') {
+                    window.forcarCapturaGPSImediata('inicio_deslocamento', p.id);
+                }
+                if (typeof window.solicitarWakeLock === 'function') {
+                    window.solicitarWakeLock();
+                }
+                if (typeof window.iniciarKeepAlive === 'function') {
+                    window.iniciarKeepAlive();
+                }
+                setTimeout(() => {
+                    window.open(`https://waze.com/ul?q=${encodeURIComponent(p.endereco)}`, '_blank');
+                }, 300);
+            };
+            btnConcluir.onclick = () => window.abrirModalFinalizar(p);
+            document.getElementById('btnCancelarEntrega').onclick = () => window.statusPedido(p.id, 'Cancelada');
+
+            modal.style.display = 'block';
+        }
+
+        window.statusPedido = function (id, novoStatus) {
+            if (typeof window.gravarPontoHistoricoGPS === 'function') {
+                window.gravarPontoHistoricoGPS(novoStatus.toLowerCase().replace(' ', '_'), id);
+            }
+            update(ref(remoteDb, 'pedidos_realtime/' + id), {
+                statusEntrega: novoStatus,
+                [`tempo_${novoStatus.toLowerCase().replace(' ', '_')}`]: new Date().toLocaleString('pt-BR')
+            }).then(() => {
+                document.getElementById('modalPedidoDetalhes').style.display = 'none';
+                window.mostrarMensagemSucesso(`Status: ${novoStatus}! ✅`);
+            });
+        }
+
+        window.abrirModalFinalizar = function (p) {
+            document.getElementById('modalPedidoDetalhes').style.display = 'none';
+            document.getElementById('modalFinalizarEntrega').style.display = 'block';
+            document.getElementById('pagamentoFinalizar').value = p.pagamento || '';
+            document.getElementById('obsFinalizar').value = ""; // Limpar obs anterior
+
+            // Verificar pagamento ao abrir e limpar foto anterior
+            window.toggleQRCodePix(p.pagamento || '');
+            window.removerFotoComprovante();
+
+            document.getElementById('btnConfirmarFinalizacao').onclick = async () => {
+                const pag = document.getElementById('pagamentoFinalizar').value;
+                const obs = document.getElementById('obsFinalizar').value;
+                const btn = document.getElementById('btnConfirmarFinalizacao');
+
+                if (!pag) { alert("Selecione o pagamento!"); return; }
+
+                if (typeof window.gravarPontoHistoricoGPS === 'function') {
+                    window.gravarPontoHistoricoGPS('conclusao_entrega', p.id);
+                }
+
+                // Se não for DINHEIRO e tiver foto, fazer upload primeiro
+                let fotoUrl = null;
+                const isDinheiro = pag.toUpperCase().includes('DINHEIRO');
+
+                if (!isDinheiro && window.fotoComprovanteBlob) {
+                    btn.disabled = true;
+                    btn.innerText = "⏳ Enviando Foto...";
+                    fotoUrl = await window.uploadComprovanteImgBB(window.fotoComprovanteBlob);
+
+                    if (!fotoUrl) {
+                        alert("❌ Erro ao enviar a foto. Tente novamente ou finalize sem foto.");
+                        btn.disabled = false;
+                        btn.innerText = "Confirmar";
+                        return;
+                    }
+                }
+                // Se for DINHEIRO, garantir que não salve foto antiga
+                if (isDinheiro) window.fotoComprovanteBlob = null;
+
+                btn.disabled = true;
+                btn.innerText = "⏳ Salvando...";
+
+                const dadosUpdate = {
+                    statusEntrega: 'Concluída',
+                    pagamento: pag,
+                    obs_finalizacao: obs,
+                    tempo_concluido: new Date().toLocaleString('pt-BR')
+                };
+
+                if (fotoUrl) {
+                    dadosUpdate.foto_comprovante = fotoUrl;
+                }
+
+                update(ref(remoteDb, 'pedidos_realtime/' + p.id), dadosUpdate).then(() => {
+                    document.getElementById('modalFinalizarEntrega').style.display = 'none';
+                    window.mostrarMensagemSucesso("Entrega Concluída! 🏁");
+                    btn.disabled = false;
+                    btn.innerText = "Confirmar";
+
+                    // Forçar gravação imediata do ponto de saída e reativar monitoramento ativo
+                    if (typeof window.forcarCapturaGPSImediata === 'function') {
+                        window.forcarCapturaGPSImediata('saida_entrega', p.id);
+                    }
+                    if (typeof window.solicitarWakeLock === 'function') {
+                        window.solicitarWakeLock();
+                    }
+                    if (typeof window.iniciarKeepAlive === 'function') {
+                        window.iniciarKeepAlive();
+                    }
+                }).catch(err => {
+                    alert("Erro ao salvar: " + err.message);
+                    btn.disabled = false;
+                    btn.innerText = "Confirmar";
+                });
+            };
+        }
+
+        // === QR CODE PIX TOGGLE E FOTO COMPROVANTE ===
+        window.toggleQRCodePix = function (pagamento) {
+            const qrContainer = document.getElementById('qrCodePixContainer');
+            const fotoContainer = document.getElementById('containerFotoComprovante');
+
+            const isPix = pagamento && pagamento.includes('PIX');
+            const isDinheiro = pagamento && pagamento.toUpperCase().includes('DINHEIRO');
+
+            if (qrContainer) {
+                qrContainer.style.display = isPix ? 'block' : 'none';
+            }
+
+            if (fotoContainer) {
+                // Mostrar foto para qualquer um que não seja dinheiro
+                fotoContainer.style.display = (pagamento && !isDinheiro) ? 'block' : 'none';
+                if (isDinheiro) window.removerFotoComprovante(); // Limpa se mudar para dinheiro
+            }
+        }
+
+        window.processarFotoComprovante = function (input, contexto = '') {
+            if (!input.files || !input.files[0]) return;
+
+            const file = input.files[0];
+            const reader = new FileReader();
+
+            window.mostrarMensagemSucesso("⚙️ Processando imagem...");
+
+            reader.onload = function (e) {
+                const img = new Image();
+                img.onload = function () {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+
+                    // Redimensionar (Max 800px)
+                    const MAX_WIDTH = 800;
+                    const MAX_HEIGHT = 800;
+
+                    if (width > height) {
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+                    } else {
+                        if (height > MAX_HEIGHT) {
+                            width *= MAX_HEIGHT / height;
+                            height = MAX_HEIGHT;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    // Adicionar Marca d'Água
+                    const dataHora = new Date().toLocaleString('pt-BR');
+                    const entregador = localStorage.getItem('userName') || 'Entregador';
+                    const texto = `Canoas Gás | ${dataHora} | ${entregador}`;
+
+                    ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+                    ctx.fillRect(0, height - 25, width, 25);
+
+                    ctx.fillStyle = "white";
+                    ctx.font = "bold 12px Arial";
+                    ctx.textAlign = "center";
+                    ctx.fillText(texto, width / 2, height - 8);
+
+                    // Converter para Blob para upload e URL para preview
+                    canvas.toBlob(function (blob) {
+                        const suffix = contexto === 'Venda' ? 'Venda' : '';
+                        const blobProp = contexto === 'Venda' ? 'fotoVendaBlob' : 'fotoComprovanteBlob';
+                        
+                        window[blobProp] = blob;
+                        const url = URL.createObjectURL(blob);
+
+                        const imgEl = document.getElementById('imgPreview' + (contexto === 'Venda' ? 'Venda' : 'Comprovante'));
+                        const containerEl = document.getElementById('previewFoto' + (contexto === 'Venda' ? 'Venda' : 'Comprovante'));
+                        const labelEl = document.getElementById('labelBotaoFoto' + (contexto === 'Venda' ? 'Venda' : ''));
+
+                        if (imgEl) imgEl.src = url;
+                        if (containerEl) containerEl.style.display = 'block';
+                        if (labelEl) labelEl.innerText = "📷 Trocar Foto";
+                        
+                        window.mostrarMensagemSucesso("✅ Foto pronta!");
+                    }, 'image/jpeg', 0.6);
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        window.removerFotoComprovante = function (contexto = '') {
+            const suffix = contexto === 'Venda' ? 'Venda' : '';
+            const blobProp = contexto === 'Venda' ? 'fotoVendaBlob' : 'fotoComprovanteBlob';
+            const inputId = contexto === 'Venda' ? 'inputFotoVenda' : 'inputFotoComprovante';
+            const previewId = contexto === 'Venda' ? 'previewFotoVenda' : 'previewFotoComprovante';
+            const imgId = contexto === 'Venda' ? 'imgPreviewVenda' : 'imgPreviewComprovante';
+            window[blobProp] = null;
+            const labelId = 'labelBotaoFoto' + (contexto === 'Venda' ? 'Venda' : '');
+            if (document.getElementById(inputId)) document.getElementById(inputId).value = "";
+            if (document.getElementById(previewId)) document.getElementById(previewId).style.display = 'none';
+            if (document.getElementById(imgId)) document.getElementById(imgId).src = "";
+            if (document.getElementById(labelId)) document.getElementById(labelId).innerText = "📷 Tirar Foto do Comprovante";
+        }
+
+        window.uploadComprovanteImgBB = async function (blob) {
+            if (!blob) return null;
+
+            // --- API KEY IMGBB ---
+            const API_KEY = "a73655b7a9da96154c7ef383a3535959";
+
+            const formData = new FormData();
+            formData.append('image', blob);
+
+            try {
+                const response = await fetch(`https://api.imgbb.com/1/upload?key=${API_KEY}`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    return result.data.url;
+                } else {
+                    console.error("Erro ImgBB:", result);
+                    return null;
+                }
+            } catch (error) {
+                console.error("Erro Upload:", error);
+                return null;
+            }
+        }
+
+        window.toggleQRCodePixVenda = function (pagamento) {
+            const qrContainer = document.getElementById('qrCodePixVendaContainer');
+            const fotoContainer = document.getElementById('containerFotoVenda');
+            if (!qrContainer) return;
+
+            const isPix = pagamento && pagamento.includes('PIX');
+            const isDinheiro = pagamento && pagamento.toUpperCase().includes('DINHEIRO');
+
+            if (qrContainer) {
+                qrContainer.style.display = isPix ? 'block' : 'none';
+            }
+
+            if (fotoContainer) {
+                fotoContainer.style.display = (pagamento && !isDinheiro) ? 'block' : 'none';
+                if (isDinheiro) window.removerFotoComprovante('Venda');
+            }
+        }
+
+        // === MÁSCARA E AUTOCOMPLETE PARA VENDA ===
+        window.mascaraTelefoneVenda = function (campo) {
+            let valor = campo.value.replace(/\D/g, "");
+            if (valor.length > 0) valor = "(" + valor;
+            if (valor.length > 3) valor = valor.slice(0, 3) + ") " + valor.slice(3);
+            if (valor.length > 10) valor = valor.slice(0, 10) + "-" + valor.slice(10, 15);
+            else if (valor.length > 9) valor = valor.slice(0, 9) + "-" + valor.slice(9);
+            campo.value = valor;
+
+            // Buscar último pedido quando telefone completo
+            if (valor.length >= 14) {
+                window.buscarClientePorTelefoneVenda(valor);
+            }
+        }
+
+        window.buscarClientePorTelefoneVenda = function (tel) {
+            if (!window.pedidosCache) return;
+
+            const ultimo = [...window.pedidosCache].reverse().find(p => p.telefone === tel);
+            if (ultimo) {
+                document.getElementById('vendaCliente').value = ultimo.cliente || '';
+                window.mostrarMensagemSucesso("✅ Cliente encontrado!");
+            }
+        }
+
+        window.mascaraMoedaVenda = function (campo) {
+            let valor = campo.value.replace(/\D/g, "");
+            valor = (valor / 100).toFixed(2) + "";
+            valor = valor.replace(".", ",");
+            valor = valor.replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1.");
+            campo.value = valor;
+        }
+
+        function atualizarDatalistVenda() {
+            const listNomes = document.getElementById('listaClientesVenda');
+            const listTels = document.getElementById('listaTelefonesVenda');
+
+            if (!listNomes || !listTels) return;
+
+            listNomes.innerHTML = '';
+            listTels.innerHTML = '';
+
+            if (!window.pedidosCache) return;
+
+            const nomes = new Set();
+            const tels = new Set();
+
+            if (window.pedidosCache) {
+                window.pedidosCache.forEach(p => {
+                    if (p.cliente) nomes.add(p.cliente.trim().toUpperCase());
+                    if (p.telefone) tels.add(p.telefone.trim());
+                });
+            }
+
+            if (window.clientesCadastradosGlobais) {
+                Object.values(window.clientesCadastradosGlobais).forEach(c => {
+                    if (c.nome) nomes.add(c.nome.trim().toUpperCase());
+                    if (c.cliente) nomes.add(c.cliente.trim().toUpperCase());
+                    if (c.tel) tels.add(c.tel.trim());
+                    if (c.telefone) tels.add(c.telefone.trim());
+                });
+            }
+
+            nomes.forEach(n => {
+                const opt = document.createElement('option');
+                opt.value = n;
+                listNomes.appendChild(opt);
+            });
+
+            tels.forEach(t => {
+                const opt = document.createElement('option');
+                opt.value = t;
+                listTels.appendChild(opt);
+            });
+        }
+
+        // === VENDA DIRETA FUNCTIONS ===
+        window.abrirModalVenda = function () {
+            // Atualizar listas de autocomplete
+            atualizarDatalistVenda();
+
+            // Limpar campos
+            document.getElementById('vendaCliente').value = '';
+            document.getElementById('vendaTelefone').value = '';
+            document.getElementById('vendaCanal').value = 'VENDA MOBILE';
+            document.getElementById('vendaQtd').value = '1';
+            document.getElementById('vendaProduto').value = 'Gás 13kg';
+            document.getElementById('vendaPagamento').value = '';
+            document.getElementById('vendaValor').value = '';
+
+            // Esconder QR Code e Foto por padrão
+            if (document.getElementById('qrCodePixVendaContainer')) {
+                document.getElementById('qrCodePixVendaContainer').style.display = 'none';
+            }
+            if (document.getElementById('containerFotoVenda')) {
+                document.getElementById('containerFotoVenda').style.display = 'none';
+                window.removerFotoComprovante('Venda');
+            }
+
+            // Abrir modal
+            document.getElementById('modalVendaDireta').style.display = 'block';
+        }
+
+        async function capturarGPS() {
+            return new Promise((resolve) => {
+                if (!('geolocation' in navigator)) {
+                    console.warn('GPS não disponível');
+                    resolve({ lat: 0, lng: 0 });
+                    return;
+                }
+
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        resolve({
+                            lat: pos.coords.latitude,
+                            lng: pos.coords.longitude
+                        });
+                    },
+                    (err) => {
+                        console.warn('Erro ao capturar GPS:', err);
+                        resolve({ lat: 0, lng: 0 });
+                    },
+                    { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+                );
+            });
+        }
+
+        async function decrementarEstoque(produto, quantidade) {
+            try {
+                // get já importado no topo do módulo
+                const hojeChave = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
+                const estoqueRef = ref(remoteDb, 'estoque_v2/' + hojeChave);
+
+                // Ler estoque atual
+                const snapshot = await get(estoqueRef);
+                if (!snapshot.exists()) {
+                    console.warn('Estoque do dia não encontrado. Venda registrada sem decremento.');
+                    return;
+                }
+
+                const estoqueAtual = snapshot.val();
+                let updates = {};
+
+                // Determinar qual campo decrementar
+                if (produto.includes('Gás 13kg')) {
+                    updates.init_g13_cheio = Math.max(0, (estoqueAtual.init_g13_cheio || 0) - quantidade);
+                } else if (produto.includes('Água')) {
+                    updates.init_agua_cheia = Math.max(0, (estoqueAtual.init_agua_cheia || 0) - quantidade);
+                }
+
+                // Atualizar Firebase
+                await update(estoqueRef, updates);
+                console.log('✅ Estoque decrementado:', updates);
+            } catch (error) {
+                console.error('Erro ao decrementar estoque:', error);
+            }
+        }
+
+        window.salvarVendaDireta = async function () {
+            const cliente = document.getElementById('vendaCliente').value.trim();
+            const telefone = document.getElementById('vendaTelefone').value.trim();
+            const canal = document.getElementById('vendaCanal').value;
+            const qtd = parseInt(document.getElementById('vendaQtd').value) || 1;
+            const produto = document.getElementById('vendaProduto').value;
+            const pagamento = document.getElementById('vendaPagamento').value;
+            const valor = document.getElementById('vendaValor').value.trim();
+            const entregador = localStorage.getItem('userName');
+
+            // Validações
+            if (!cliente) {
+                alert('Preencha o nome do cliente!');
+                return;
+            }
+            if (!pagamento) {
+                alert('Selecione a forma de pagamento!');
+                return;
+            }
+            if (!valor) {
+                alert('Preencha o valor da venda!');
+                return;
+            }
+
+            const btn = document.getElementById('btnConfirmarVenda');
+            const isDinheiro = pagamento.toUpperCase().includes('DINHEIRO');
+
+            try {
+                // Se não for DINHEIRO e tiver foto, fazer upload
+                let fotoUrl = null;
+                if (!isDinheiro && window.fotoVendaBlob) {
+                    btn.disabled = true;
+                    btn.innerText = "⏳ Enviando Foto...";
+                    fotoUrl = await window.uploadComprovanteImgBB(window.fotoVendaBlob);
+
+                    if (!fotoUrl) {
+                        alert("❌ Erro ao enviar a foto. Tente novamente ou finalize sem foto.");
+                        btn.disabled = false;
+                        btn.innerText = "Confirmar Venda";
+                        return;
+                    }
+                }
+
+                btn.disabled = true;
+                btn.innerText = "⏳ Salvando...";
+
+                // Capturar GPS
+                window.mostrarMensagemSucesso('📍 Capturando localização...');
+                const gps = await capturarGPS();
+
+                // Criar objeto de pedido
+                const now = new Date();
+                const dataFormatada = now.toLocaleDateString('pt-BR') + ', ' + now.toLocaleTimeString('pt-BR');
+
+                const pedido = {
+                    cliente: cliente,
+                    telefone: telefone || '-',
+                    endereco: 'VENDA MOBILE', // Canal fixo
+                    produto: `${qtd}x ${produto}`,
+                    qtd: qtd,
+                    pagamento: pagamento,
+                    valor: valor,
+                    entregador: entregador,
+                    canal: 'VENDA ENTREGADOR',
+                    tipoVenda: 'VENDA MOBILE',
+                    statusEntrega: 'Concluída',
+                    data: dataFormatada,
+                    timestamp: Date.now(),
+                    gps: gps,
+                    tempo_concluido: dataFormatada,
+                    informacoes: `Venda direta - VENDA MOBILE`,
+                    foto_comprovante: fotoUrl || null
+                };
+
+                // push importado no topo do módulo
+
+                // Salvar no Firebase
+                const pedidosRef = ref(remoteDb, 'pedidos_realtime');
+                await push(pedidosRef, pedido);
+
+                // Decrementar estoque
+                await decrementarEstoque(produto, qtd);
+
+                // Fechar modal e mostrar sucesso
+                document.getElementById('modalVendaDireta').style.display = 'none';
+                window.mostrarMensagemSucesso('✅ Venda registrada com sucesso!');
+
+                console.log('✅ Venda salva:', pedido);
+            } catch (error) {
+                console.error('Erro ao salvar venda:', error);
+                alert('Erro ao registrar venda: ' + error.message);
+            } finally {
+                const btn = document.getElementById('btnConfirmarVenda');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerText = "Confirmar Venda";
+                }
+            }
+        }
+
+        // Initial timer
+        let countdown = 30;
+        setInterval(() => {
+            countdown--;
+            if (document.getElementById('refreshTimer')) document.getElementById('refreshTimer').innerText = `🔄 ${countdown}s`;
+            if (countdown <= 0) { countdown = 30; window.renderizarTabelaPorData(); }
+        }, 1000);
+
+        window.verificarSessao();
+    </script>
 </body>
 
 </html>
