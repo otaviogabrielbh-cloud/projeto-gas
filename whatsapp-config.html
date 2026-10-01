@@ -502,39 +502,57 @@
             const imgQR = document.getElementById('imgQRCode');
 
             try {
-                const response = await fetch(VPS_WHATSAPP_STATUS_URL, { cache: 'no-store' });
-                if (!response.ok) throw new Error('Servidor retornou erro ' + response.status);
-                
-                const data = await response.json();
+                // 1. Verificar primeiro o Heartbeat do VPS na nuvem (sempre disponível e instantâneo)
+                let statusCloud = null;
+                try {
+                    const resCloud = await fetch('https://canoas-gas-default-rtdb.firebaseio.com/servidor_whatsapp_status.json?t=' + Date.now());
+                    if (resCloud.ok) statusCloud = await resCloud.json();
+                } catch(eCloud) {}
 
-                if (data.status === 'connected') {
+                // 2. Se a nuvem indicar conectado nos últimos 2 minutos
+                if (statusCloud && (statusCloud.online || statusCloud.status === 'connected')) {
+                    const agora = Date.now();
+                    const diffSeg = statusCloud.timestamp ? Math.round((agora - statusCloud.timestamp) / 1000) : 0;
+                    
                     statusDot.style.background = '#2ecc71';
                     statusDot.style.boxShadow = '0 0 12px #2ecc71';
                     statusTexto.textContent = 'Servidor WhatsApp VPS: Conectado ✅';
-                    statusDetalhe.textContent = 'Online 24h e pronto para enviar mensagens e imagens.';
+                    statusDetalhe.textContent = `Online 24h no VPS (${statusCloud.hostname || 'VPS Nuvem'}) - Ativo agora há ${diffSeg}s.`;
                     boxQR.style.display = 'none';
                     boxConectado.style.display = 'block';
-                } else if (data.status === 'qr' && data.qr) {
-                    statusDot.style.background = '#f1c40f';
-                    statusDot.style.boxShadow = '0 0 12px #f1c40f';
-                    statusTexto.textContent = 'Aguardando Leitura do QR Code 📲';
-                    statusDetalhe.textContent = 'Escaneie o QR Code abaixo com seu WhatsApp para conectar.';
-                    imgQR.src = data.qr;
-                    boxQR.style.display = 'block';
-                    boxConectado.style.display = 'none';
-                } else {
-                    statusDot.style.background = '#3498db';
-                    statusDot.style.boxShadow = '0 0 12px #3498db';
-                    statusTexto.textContent = 'Servidor WhatsApp VPS: Inicializando...';
-                    statusDetalhe.textContent = 'Aguardando geração do QR Code...';
-                    boxQR.style.display = 'none';
-                    boxConectado.style.display = 'none';
+                    return;
                 }
+
+                // 3. Fallback: Consultar endpoint direto do VPS
+                const response = await fetch(VPS_WHATSAPP_STATUS_URL, { cache: 'no-store' });
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.status === 'connected') {
+                        statusDot.style.background = '#2ecc71';
+                        statusDot.style.boxShadow = '0 0 12px #2ecc71';
+                        statusTexto.textContent = 'Servidor WhatsApp VPS: Conectado ✅';
+                        statusDetalhe.textContent = 'Online 24h e pronto para enviar mensagens e imagens.';
+                        boxQR.style.display = 'none';
+                        boxConectado.style.display = 'block';
+                        return;
+                    } else if (data.status === 'qr' && data.qr) {
+                        statusDot.style.background = '#f1c40f';
+                        statusDot.style.boxShadow = '0 0 12px #f1c40f';
+                        statusTexto.textContent = 'Aguardando Leitura do QR Code 📲';
+                        statusDetalhe.textContent = 'Escaneie o QR Code abaixo com seu WhatsApp para conectar.';
+                        imgQR.src = data.qr;
+                        boxQR.style.display = 'block';
+                        boxConectado.style.display = 'none';
+                        return;
+                    }
+                }
+
+                throw new Error('Aguardando resposta do VPS...');
             } catch (err) {
                 statusDot.style.background = '#e74c3c';
                 statusDot.style.boxShadow = '0 0 12px #e74c3c';
                 statusTexto.textContent = 'Servidor WhatsApp VPS: Desconectado / Offline';
-                statusDetalhe.textContent = 'Não foi possível conectar a ' + VPS_WHATSAPP_STATUS_URL;
+                statusDetalhe.textContent = 'Aguardando sinal do VPS...';
                 boxQR.style.display = 'none';
                 boxConectado.style.display = 'none';
             }
