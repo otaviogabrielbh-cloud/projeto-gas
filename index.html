@@ -15,6 +15,7 @@
         href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Poppins:wght@300;400;600&display=swap"
         rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="js/logo-png-base64.js"></script>
     <!-- Google Maps removido, usando OpenStreetMap -->
     <style>
         /* Google Places Autocomplete Styling */
@@ -3139,14 +3140,37 @@
         const remoteDb = window.remoteDb;
         window.remoteDb = "vps";
 
+        // Inicialização imediata das configurações do WhatsApp direto do banco na nuvem
+        fetch('https://canoas-gas-default-rtdb.firebaseio.com/configuracoes_whatsapp.json')
+            .then(r => r.json())
+            .then(cfg => {
+                if (!cfg) return;
+                const url = (cfg.wp_url && !cfg.wp_url.includes('localhost') && !cfg.wp_url.includes(':3000')) ? cfg.wp_url : 'http://179.236.224.192:3001/send-message';
+                localStorage.setItem('wp_url', url);
+                if (typeof cfg.wp_auto_cliente !== 'undefined') localStorage.setItem('wp_auto_cliente', String(cfg.wp_auto_cliente));
+                if (typeof cfg.wp_auto_entregador !== 'undefined') localStorage.setItem('wp_auto_entregador', String(cfg.wp_auto_entregador));
+                if (typeof cfg.wp_anexar_logo_cliente !== 'undefined') localStorage.setItem('wp_anexar_logo_cliente', String(cfg.wp_anexar_logo_cliente));
+                if (cfg.wp_custom_logo_base64) localStorage.setItem('custom_logo_base64', cfg.wp_custom_logo_base64);
+                if (cfg.wp_msg_cliente) localStorage.setItem('wp_msg_cliente', cfg.wp_msg_cliente);
+                if (cfg.wp_msg_entregador) localStorage.setItem('wp_msg_entregador', cfg.wp_msg_entregador);
+                console.log("☁️ [REST] Configurações de WhatsApp inicializadas no painel.");
+            })
+            .catch(() => {});
+
         // Sincronização em tempo real das configurações do WhatsApp salvas no Firebase
         try {
             onValue(ref(remoteDb, 'configuracoes_whatsapp'), (snapshot) => {
                 const cfg = snapshot.val();
                 if (cfg) {
-                    if (cfg.wp_url) localStorage.setItem('wp_url', cfg.wp_url);
+                    if (cfg.wp_url && !cfg.wp_url.includes('localhost') && !cfg.wp_url.includes(':3000')) {
+                        localStorage.setItem('wp_url', cfg.wp_url);
+                    } else {
+                        localStorage.setItem('wp_url', 'http://179.236.224.192:3001/send-message');
+                    }
                     if (typeof cfg.wp_auto_cliente !== 'undefined') localStorage.setItem('wp_auto_cliente', String(cfg.wp_auto_cliente));
                     if (typeof cfg.wp_auto_entregador !== 'undefined') localStorage.setItem('wp_auto_entregador', String(cfg.wp_auto_entregador));
+                    if (typeof cfg.wp_anexar_logo_cliente !== 'undefined') localStorage.setItem('wp_anexar_logo_cliente', String(cfg.wp_anexar_logo_cliente));
+                    if (cfg.wp_custom_logo_base64) localStorage.setItem('custom_logo_base64', cfg.wp_custom_logo_base64);
                     if (cfg.wp_msg_cliente) localStorage.setItem('wp_msg_cliente', cfg.wp_msg_cliente);
                     if (cfg.wp_msg_entregador) localStorage.setItem('wp_msg_entregador', cfg.wp_msg_entregador);
                     console.log("☁️ [Firebase] Configurações de WhatsApp sincronizadas no painel.");
@@ -6258,16 +6282,47 @@
         // OPERAÇÕES DE PEDIDO (CRUD)
         // ============================================================================
 
+        window.DEFAULT_WP_MSG_CLIENTE = `Olá, {{nome_cliente}} 👋\n\nSeu pedido de {{produto}}, está a caminho!\n\n🛵 Entregador: {{nome_entregador}}\n\n-------------------------------\n\n👤 Cliente: {{nome_cliente}}\n📞 Tel: {{telefone_cliente}}\n🚚 Endereço: {{endereco}}\n📦 Produto: {{produto}}\n📝 Info:  {{info_adc}}\n💳 Pagamento:   {{forma_pagamento}}\n💵 Valor: {{valor}}   \n\nContato da revenda: 31 - 98255 7807 \n-------------------------------\n\nO tempo da entrega aproximado de 35 minutos.\n\nCanoas gás agradece sua confiança e preferência.!`;
+
+        window.DEFAULT_WP_MSG_ENTREGADOR = `🚚 *NOVA ENTREGA*  *{{endereco}}*\n\n👤 *Cliente:* {{nome_cliente}}\n📞 *Tel:* {{telefone_cliente}}\n🏘️ *Endereço:* {{endereco}}\n📦 *Produto:* {{produto}}\n💰 *Valor:* {{valor}} \n💳 Pagamento:   {{forma_pagamento}}\n📝 *Info:* {{info_adc}}\n\nUse o aplicativo - Canoas.`;
+
+        window.gerarMensagemFichaEntregaUI = function (p) {
+            const template = `🚚 *NOVA ENTREGA*  *{{endereco}}*\n\n👤 *Cliente:* {{nome_cliente}}\n📞 *Tel:* {{telefone_cliente}}\n🏘️ *Endereço:* {{endereco}}\n📦 *Produto:* {{produto}}\n💰 *Valor:* {{valor}} \n💳 Pagamento:   {{forma_pagamento}}\n📝 *Info:* {{info_adc}}\n\n📍 Waze: {{link_waze}}\n📍 Google Maps: {{link_maps}}\n\nUse o aplicativo - Canoas.`;
+            return window.formatarTemplateMensagem(template, p);
+        };
+
+        window.formatarTemplateMensagem = function (template, p) {
+            if (!template) return '';
+            const displayProd = p.qtd > 1 ? `${p.qtd}x ${p.produto}` : (p.produto || '');
+            const entregadorNome = (p.entregador && p.entregador !== 'PESQUISA') ? p.entregador.trim() : '';
+            const valorFormatado = String(p.valor || '').replace(/^R\$\s*/i, '');
+            const linkWaze = 'https://waze.com/ul?q=' + encodeURIComponent(p.endereco || '');
+            const linkMaps = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(p.endereco || '');
+            
+            let t = template;
+            t = t.replace(/{{nome_cliente}}/g, p.cliente || '');
+            t = t.replace(/{{endereco}}/g, p.endereco || '');
+            t = t.replace(/{{produto}}/g, displayProd);
+            t = t.replace(/{{quantidade}}/g, String(p.qtd || '1'));
+            t = t.replace(/{{valor}}/g, valorFormatado);
+            t = t.replace(/{{telefone_cliente}}/g, p.telefone || '');
+            t = t.replace(/{{forma_pagamento}}/g, p.pagamento || '');
+            t = t.replace(/{{info_adc}}/g, p.informacoes || '');
+            t = t.replace(/{{canal_venda}}/g, p.canalVenda || '');
+            t = t.replace(/{{nome_entregador}}/g, entregadorNome);
+            t = t.replace(/{{link_waze}}/g, linkWaze);
+            t = t.replace(/{{link_maps}}/g, linkMaps);
+            return t;
+        };
+
         window.gerarMensagemEntregador = function (p) {
-            const displayProd = p.qtd > 1 ? `${p.qtd}x ${p.produto}` : p.produto;
-            const linkWaze = "https://waze.com/ul?q=" + encodeURIComponent(p.endereco || '');
-            const linkMaps = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(p.endereco || '');
-            return `ENTREGAR PARA - ${p.cliente}, ${p.endereco}\n\n🛵 Entregador: ${p.entregador} \n-------------------------------\n👤 Cliente: ${p.cliente} \n🛒 Canal: ${p.canalVenda} \n📞 Tel: ${p.telefone} \n🚚 Endereço: ${p.endereco} \n📦 Produto: ${displayProd} \n📝 Info: ${p.informacoes} \n💳 Pagamento: ${p.pagamento} \n💵 Valor: R$ ${p.valor} \n-------------------------------\n\n📍 Waze: ${linkWaze} \n📍 Google Maps: ${linkMaps}`;
+            const template = localStorage.getItem('wp_msg_entregador') || window.DEFAULT_WP_MSG_ENTREGADOR;
+            return window.formatarTemplateMensagem(template, p);
         };
 
         window.gerarMensagemCliente = function (p) {
-            const displayProd = p.qtd > 1 ? `${p.qtd}x ${p.produto}` : p.produto;
-            return `Olá, ${p.cliente}! 👋\n\nSeu pedido de gás ou água, via ${p.canalVenda}, está a caminho!\n\n🛵 Entregador: ${p.entregador} \n-------------------------------\n\n👤 Cliente: ${p.cliente} \n📞 Tel: ${p.telefone} \n🚚 Endereço: ${p.endereco} \n📦 Produto: ${displayProd} \n📝 Info: ${p.informacoes} \n💳 Pagamento: ${p.pagamento} \n💵 Valor: R$ ${p.valor} \n\nContato da revenda: 31 - 98255 7807 \n-------------------------------\n\nO tempo da entrega aproximado de 35 minutos.\n\nCanoas gás agradece sua confiança e preferência.!`;
+            const template = localStorage.getItem('wp_msg_cliente') || window.DEFAULT_WP_MSG_CLIENTE;
+            return window.formatarTemplateMensagem(template, p);
         };
 
         function abrirModalPromocao(dados, displayProd, isPortaria, isPesquisa, textoEntregador, textoCliente) {
@@ -6332,160 +6387,181 @@
                     t = t.replace(/{{forma_pagamento}}/g, dados.pagamento || '');
                     t = t.replace(/{{info_adc}}/g, dados.informacoes || '');
                     
-                    // Buscar nome do entregador para template (opcional)
                     const entregadorNome = (dados.entregador && dados.entregador !== 'PESQUISA') ? dados.entregador.trim() : '';
                     t = t.replace(/{{nome_entregador}}/g, entregadorNome);
-                    
                     return t;
                 };
 
-                let urlApi = localStorage.getItem('wp_url');
-                if (!urlApi || urlApi.includes('localhost') || urlApi.includes(':3000')) {
-                    urlApi = 'http://179.236.224.192:3001/send-message';
-                }
-                const autoCliente = localStorage.getItem('wp_auto_cliente') === 'true';
-                const autoEntregador = localStorage.getItem('wp_auto_entregador') === 'true';
+                // URL da API VPS WhatsApp (porta 3001 direta)
+                const urlApi = 'http://179.236.224.192:3001/send-message';
+
+                // Automações ativadas por padrão a menos que explicitamente desligadas
+                const autoCliente = localStorage.getItem('wp_auto_cliente') !== 'false';
+                const autoEntregador = localStorage.getItem('wp_auto_entregador') !== 'false';
                 
                 const msgCriacaoCliente = localStorage.getItem('wp_msg_cliente');
                 const msgCriacaoEntregador = localStorage.getItem('wp_msg_entregador');
 
-                // Função para adicionar à Fila da Nuvem (Firebase / VPS) garantindo envio pelo servidor
-                const enfileirarMensagemNuvem = (telefone, mensagem, tipo, destinatario) => {
-                    let itemRef = null;
-                    if (window.firebasePush && window.firebaseRef && window.remoteDb) {
-                        try {
-                            itemRef = window.firebasePush(window.firebaseRef(window.remoteDb, 'fila_whatsapp'));
-                            window.firebaseSet(itemRef, {
-                                telefone: '55' + telefone,
-                                mensagem: mensagem,
-                                tipo: tipo,
-                                destinatario: destinatario || '',
-                                cliente: dados.cliente || '',
-                                status: 'pendente',
-                                criadoEm: Date.now(),
-                                origem: 'gerenciador_pedidos'
-                            });
-                            console.log(`☁️ [Fila WhatsApp] Mensagem para ${tipo} (${destinatario || telefone}) adicionada à nuvem.`);
-                        } catch (errFila) {
-                            console.warn("⚠️ Erro ao salvar na fila do Firebase:", errFila);
-                        }
+                // Logo para anexo do CLIENTE (se habilitado)
+                const anexoLogoAtivo = localStorage.getItem('wp_anexar_logo_cliente') !== 'false';
+                let logoBase64 = null;
+                if (anexoLogoAtivo) {
+                    const custom = localStorage.getItem('custom_logo_base64');
+                    if (custom && custom.startsWith('data:image/')) {
+                        logoBase64 = custom;
+                    } else if (window.LOGO_CANOAS_GAS_PNG_BASE64 && window.LOGO_CANOAS_GAS_PNG_BASE64.startsWith('data:image/')) {
+                        logoBase64 = window.LOGO_CANOAS_GAS_PNG_BASE64;
+                    } else if (window.LOGO_CANOAS_GAS_BASE64 && window.LOGO_CANOAS_GAS_BASE64.startsWith('data:image/')) {
+                        logoBase64 = window.LOGO_CANOAS_GAS_BASE64;
                     }
-                    return itemRef;
-                };
 
-                // Disparo Cliente
-                if (autoCliente && dados.telefone) {
-                    const telLimpo = dados.telefone.replace(/\D/g, '');
-                    if (telLimpo.length >= 10) { 
-                        let msgCliente = substituirVariaveis(msgCriacaoCliente) || textoCliente;
-                        const filaRefCli = enfileirarMensagemNuvem(telLimpo, msgCliente, 'cliente', dados.cliente || 'Cliente');
-
-                        // Preparar payload com suporte a anexo da logo oficial
-                        const payloadCliente = { phone: '55' + telLimpo, message: msgCliente };
-                        const anexarLogo = localStorage.getItem('wp_anexar_logo_cliente') !== 'false';
-                        if (anexarLogo && window.LOGO_PNG_BASE64) {
-                            payloadCliente.imageBase64 = localStorage.getItem('custom_logo_base64') || window.LOGO_PNG_BASE64;
-                            payloadCliente.caption = msgCliente;
-                        }
-
-                        // Tenta envio direto para o VPS 24h
-                        fetch(urlApi, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(payloadCliente)
-                        }).then(res => {
-                            if (res.ok && filaRefCli && window.firebaseUpdate) {
-                                window.firebaseUpdate(filaRefCli, { status: 'enviado', enviadoDireto: true, enviadoEm: Date.now() });
+                    // Se ainda não estiver carregado, busca o arquivo da logo oficial diretamente
+                    if (!logoBase64) {
+                        try {
+                            const respImg = await fetch('logo_whatsapp_16x9.png');
+                            if (respImg.ok) {
+                                const b = await respImg.blob();
+                                logoBase64 = await new Promise(res => {
+                                    const fr = new FileReader();
+                                    fr.onloadend = () => res(fr.result);
+                                    fr.onerror = () => res(null);
+                                    fr.readAsDataURL(b);
+                                });
+                                if (logoBase64) {
+                                    window.LOGO_CANOAS_GAS_PNG_BASE64 = logoBase64;
+                                    localStorage.setItem('custom_logo_base64', logoBase64);
+                                }
                             }
-                        }).catch(e => {
-                            console.log("ℹ️ Envio direto conectado via fila do VPS.");
-                        });
+                        } catch(eImg) {
+                            console.warn("Aviso ao carregar logo_whatsapp_16x9.png:", eImg);
+                        }
                     }
                 }
 
-                // Disparo Entregador
+                // Enfileirar na Nuvem como redundância garantida
+                const enfileirarNuvem = (telefone, mensagem, tipo, destinatario) => {
+                    const item = {
+                        telefone: '55' + telefone,
+                        mensagem: mensagem,
+                        tipo: tipo,
+                        destinatario: destinatario || '',
+                        cliente: dados.cliente || '',
+                        temImagem: !!(tipo === 'cliente' && logoBase64),
+                        status: 'pendente',
+                        criadoEm: Date.now(),
+                        origem: 'gerenciador_pedidos'
+                    };
+                    try {
+                        fetch('https://canoas-gas-default-rtdb.firebaseio.com/fila_whatsapp.json', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(item)
+                        }).catch(() => {});
+                    } catch(e) {}
+                    if (window.firebasePush) {
+                        try { window.firebasePush('fila_whatsapp', item); } catch(e) {}
+                    }
+                };
+
+                // Função de disparo com contingência para o 9º dígito brasileiro
+                const enviarMensagemServidor = async (numeroRaw, textoMsg, imagem) => {
+                    if (!numeroRaw) return false;
+                    let telLimpo = String(numeroRaw).replace(/\D/g, '');
+                    if (telLimpo.length < 10) return false;
+                    
+                    let telComDDI = telLimpo.startsWith('55') ? telLimpo : ('55' + telLimpo);
+                    const numerosTentativa = [telComDDI];
+                    if (telComDDI.startsWith('55') && telComDDI.length === 13 && telComDDI[4] === '9') {
+                        numerosTentativa.push(telComDDI.slice(0, 4) + telComDDI.slice(5));
+                    } else if (telComDDI.startsWith('55') && telComDDI.length === 12) {
+                        numerosTentativa.push(telComDDI.slice(0, 4) + '9' + telComDDI.slice(4));
+                    }
+
+                    for (const num of numerosTentativa) {
+                        try {
+                            const payload = { phone: num, message: textoMsg };
+                            if (imagem) payload.image = imagem;
+
+                            const res = await fetch(urlApi, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(payload)
+                            });
+                            const data = await res.json().catch(() => null);
+                            if (res.ok && data && data.success) {
+                                console.log(`✅ WhatsApp enviado com sucesso para ${num}`);
+                                return true;
+                            }
+                        } catch (errNet) {
+                            console.warn(`Tentativa para ${num} falhou:`, errNet);
+                        }
+                    }
+                    return false;
+                };
+
+                let enviosRealizados = [];
+
+                // 1. Disparo Cliente (com template padrão oficial)
+                if (autoCliente && dados.telefone) {
+                    const telCliente = dados.telefone.replace(/\D/g, '');
+                    if (telCliente.length >= 10) {
+                        let msgCli = textoCliente || window.gerarMensagemCliente(dados);
+                        enfileirarNuvem(telCliente, msgCli, 'cliente', dados.cliente || 'Cliente');
+                        const enviadoCli = await enviarMensagemServidor(telCliente, msgCli, logoBase64);
+                        if (enviadoCli) enviosRealizados.push(`Cliente`);
+                    }
+                }
+
+                // 2. Disparo Entregador (com template padrão oficial)
                 if (autoEntregador && dados.entregador && dados.entregador !== 'PESQUISA') {
                     const entregadorNome = dados.entregador.trim();
                     const sanitizarChaveCracha = (str) => {
                         return (str || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim().replace(/[^A-Z0-9]/g, "_");
                     };
                     const chave = sanitizarChaveCracha(entregadorNome);
-                    
-                    // Inicializar cache se disponível
-                    if (!window.crachasCadastrados) {
-                        try {
-                            const cached = localStorage.getItem('cache_crachas_entregadores');
-                            if (cached) window.crachasCadastrados = JSON.parse(cached);
-                        } catch (e) {}
-                    }
-                    
+
+                    // Buscar crachá do entregador (cache local ou Firebase REST)
                     let cracha = null;
                     if (window.crachasCadastrados && window.crachasCadastrados[chave]) {
                         cracha = window.crachasCadastrados[chave];
-                    } else if (window.crachasCadastrados) {
-                        cracha = Object.values(window.crachasCadastrados).find(c => {
-                            const cNome = sanitizarChaveCracha(c.nome || '');
-                            const cId = sanitizarChaveCracha(c.id || '');
-                            return cNome === chave || cId === chave || cNome.startsWith(chave) || chave.startsWith(cNome);
-                        }) || null;
                     }
 
-                    if (!cracha && window.firebaseGet && window.firebaseRef && window.remoteDb) {
+                    if (!cracha) {
                         try {
-                            const snap = await window.firebaseGet(window.firebaseRef(window.remoteDb, 'crachas_entregadores/' + chave));
-                            if (snap && snap.exists()) {
-                                cracha = snap.val();
-                                if (!window.crachasCadastrados) window.crachasCadastrados = {};
-                                window.crachasCadastrados[chave] = cracha;
-                            } else {
-                                // Fallback inteligente: buscar em todos os crachás caso o nome esteja abreviado ou com sobrenome
-                                const allSnap = await window.firebaseGet(window.firebaseRef(window.remoteDb, 'crachas_entregadores'));
-                                if (allSnap && allSnap.exists()) {
-                                    const todos = allSnap.val() || {};
-                                    cracha = Object.values(todos).find(c => {
-                                        const cNome = sanitizarChaveCracha(c.nome || '');
-                                        const cId = sanitizarChaveCracha(c.id || '');
-                                        return cNome === chave || cId === chave || cNome.startsWith(chave) || chave.startsWith(cNome);
-                                    }) || null;
-                                    if (cracha) {
-                                        if (!window.crachasCadastrados) window.crachasCadastrados = {};
-                                        window.crachasCadastrados[chave] = cracha;
-                                    }
+                            const snap = await fetch('https://canoas-gas-default-rtdb.firebaseio.com/crachas_entregadores.json');
+                            const todos = await snap.json();
+                            if (todos) {
+                                cracha = todos[chave] || Object.values(todos).find(c => {
+                                    const cNome = sanitizarChaveCracha(c.nome || '');
+                                    const cId = sanitizarChaveCracha(c.id || '');
+                                    return cNome === chave || cId === chave || cNome.includes(chave) || chave.includes(cNome);
+                                }) || null;
+                                if (cracha) {
+                                    if (!window.crachasCadastrados) window.crachasCadastrados = {};
+                                    window.crachasCadastrados[chave] = cracha;
                                 }
                             }
-                        } catch (e) {
-                            console.warn("Erro ao buscar crachá:", e);
+                        } catch (eCracha) {
+                            console.warn("Aviso ao buscar crachá via REST:", eCracha);
                         }
                     }
 
                     const foneEntregadorRaw = cracha ? (cracha.telefone || cracha.whatsapp || '') : '';
                     if (foneEntregadorRaw) {
-                        let telEntregador = foneEntregadorRaw.replace(/\D/g, '');
-                        if (telEntregador && telEntregador.length >= 10) {
-                            let msgEntregador = substituirVariaveis(msgCriacaoEntregador) || textoEntregador;
-                            const filaRefEnt = enfileirarMensagemNuvem(telEntregador, msgEntregador, 'entregador', dados.entregador);
-
-                            // Tenta envio direto se o servidor estiver nesta máquina
-                            fetch(urlApi, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ phone: '55' + telEntregador, message: msgEntregador })
-                            }).then(res => {
-                                if (res.ok) {
-                                    console.log(`✅ WhatsApp direto para entregador ${dados.entregador} (${telEntregador})`);
-                                    if (filaRefEnt && window.firebaseUpdate) {
-                                        window.firebaseUpdate(filaRefEnt, { status: 'enviado', enviadoDireto: true, enviadoEm: Date.now() });
-                                    }
-                                }
-                            }).catch(e => {
-                                console.log("ℹ️ Envio direto não conectado; a fila do Firebase assumirá o envio pelo Notebook.");
-                            });
-                        } else {
-                            console.warn("Telefone do entregador inválido (menos de 10 dígitos):", foneEntregadorRaw);
+                        const telEntregador = foneEntregadorRaw.replace(/\D/g, '');
+                        if (telEntregador.length >= 10) {
+                            let msgEnt = textoEntregador || window.gerarMensagemEntregador(dados);
+                            enfileirarNuvem(telEntregador, msgEnt, 'entregador', dados.entregador);
+                            const enviadoEnt = await enviarMensagemServidor(telEntregador, msgEnt, null);
+                            if (enviadoEnt) enviosRealizados.push(`Entregador (${dados.entregador})`);
                         }
                     } else {
-                        console.warn(`Crachá ou telefone não encontrado para o entregador "${dados.entregador}".`);
+                        console.warn(`Telefone não cadastrado para o entregador ${dados.entregador}`);
                     }
+                }
+
+                if (enviosRealizados.length > 0 && typeof window.mostrarMensagemSucesso === 'function') {
+                    window.mostrarMensagemSucesso(`📲 WhatsApp enviado para: ${enviosRealizados.join(' e ')}! ✅`);
                 }
 
             } catch (e) {
@@ -6494,10 +6570,15 @@
         };
 
         function salvarEFinalizarPedido(dados, displayProd, isPortaria, isPesquisa, textoEntregador, textoCliente) {
-            // Salvar no Firebase (Fonte de Verdade Real-time)
+            // 1. Salvar no Firebase / VPS (Fonte de Verdade Real-time)
             push(ref(remoteDb, 'pedidos_realtime'), dados).then((snapshot) => {
                 window.ULTIMO_PEDIDO_ID_FIREBASE = snapshot.key;
             });
+
+            // 2. Disparo Imediato de Whatsapp (não depende da gravação do IndexedDB local)
+            if (!isPesquisa) {
+                window.dispararWhatsapp(dados, textoEntregador, textoCliente);
+            }
 
             const setTxt = (id, txt) => {
                 const el = document.getElementById(id);
@@ -6510,7 +6591,7 @@
             // Opcional: Manter no IndexedDB como log local (apenas se db disponível)
             if (!db) {
                 // db ainda não inicializado — pular log local e ir direto ao oncomplete simulado
-                setTxt('resultado', textoEntregador);
+                setTxt('resultado', window.gerarMensagemFichaEntregaUI ? window.gerarMensagemFichaEntregaUI(dados) : textoEntregador);
                 setTxt('msgCliente', textoCliente);
                 document.querySelectorAll('.secao-titulo, .btn-copiar').forEach(el => { el.style.display = isPesquisa ? 'none' : 'block'; });
                 const btnEscala = document.getElementById('btnEscala');
@@ -6519,11 +6600,6 @@
                 atualizarDatalist();
                 document.getElementById('topo').scrollIntoView({ behavior: 'smooth' });
                 if (!isPesquisa && typeof window.imprimirRecibo === 'function') window.imprimirRecibo(dados, displayProd, false, false, true);
-                
-                // Disparo de Whatsapp
-                if (!isPesquisa && !isPortaria) {
-                    window.dispararWhatsapp(dados, textoEntregador, textoCliente);
-                }
                 return;
             }
 
@@ -6535,7 +6611,7 @@
             };
 
             tx.oncomplete = () => {
-                setTxt('resultado', textoEntregador);
+                setTxt('resultado', window.gerarMensagemFichaEntregaUI ? window.gerarMensagemFichaEntregaUI(dados) : textoEntregador);
                 setTxt('msgCliente', textoCliente);
 
                 // Mostrar/Esconder botões de cópia e títulos
@@ -6557,11 +6633,6 @@
                 // Impressão térmica automática por tipo de pagamento (Forçada pelo clique no botão)
                 if (!isPesquisa && typeof window.imprimirRecibo === 'function') {
                     window.imprimirRecibo(dados, displayProd, false, false, true);
-                }
-
-                // Disparo de Whatsapp
-                if (!isPesquisa && !isPortaria) {
-                    window.dispararWhatsapp(dados, textoEntregador, textoCliente);
                 }
             };
         }

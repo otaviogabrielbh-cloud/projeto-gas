@@ -542,13 +542,13 @@
 
         // Testar disparo de mensagem direto
         async function realizarDisparoTeste() {
-            const telInput = document.getElementById('teste_telefone').value.replace(/\D/g, '');
+            let telInput = document.getElementById('teste_telefone').value.replace(/\D/g, '');
             const msgInput = document.getElementById('teste_mensagem').value.trim();
             const statusDiv = document.getElementById('statusEnvioTeste');
             const btn = document.getElementById('btnDisparoTeste');
 
             if (!telInput || telInput.length < 10) {
-                alert('Por favor, informe um telefone válido com DDD (ex: 31982557807)');
+                alert('Por favor, informe um telefone válido com DDD (ex: 31983035778)');
                 return;
             }
 
@@ -556,33 +556,72 @@
             statusDiv.textContent = '⏳ Enviando mensagem pelo VPS...';
             btn.disabled = true;
 
-            const urlApi = document.getElementById('wp_url').value.trim() || VPS_WHATSAPP_SEND_URL;
+            let urlApi = document.getElementById('wp_url').value.trim();
+            if (!urlApi || urlApi.includes('localhost') || urlApi.includes(':3000')) {
+                urlApi = VPS_WHATSAPP_SEND_URL;
+                document.getElementById('wp_url').value = VPS_WHATSAPP_SEND_URL;
+                localStorage.setItem('wp_url', VPS_WHATSAPP_SEND_URL);
+            }
+
+            // Garantir DDI 55
+            let telComDDI = telInput;
+            if (!telComDDI.startsWith('55') && (telComDDI.length === 10 || telComDDI.length === 11)) {
+                telComDDI = '55' + telComDDI;
+            }
+
+            // Gerar variações (com e sem o 9º dígito para números do Brasil)
+            const numerosParaTentar = [telComDDI];
+            if (telComDDI.startsWith('55') && telComDDI.length === 13 && telComDDI[4] === '9') {
+                // Remove o 9 (ex: 5531983035778 -> 553183035778)
+                numerosParaTentar.push(telComDDI.slice(0, 4) + telComDDI.slice(5));
+            } else if (telComDDI.startsWith('55') && telComDDI.length === 12) {
+                // Adiciona o 9 (ex: 553183035778 -> 5531983035778)
+                numerosParaTentar.push(telComDDI.slice(0, 4) + '9' + telComDDI.slice(4));
+            }
 
             try {
-                const payload = {
-                    phone: '55' + telInput,
-                    message: msgInput
-                };
+                let enviado = false;
+                let numSucesso = '';
+                let detalheErro = '';
 
-                // Anexar logo se marcado
-                if (document.getElementById('wp_anexar_logo_cliente').checked && window.LOGO_PNG_BASE64) {
-                    payload.imageBase64 = localStorage.getItem('custom_logo_base64') || window.LOGO_PNG_BASE64;
-                    payload.caption = msgInput;
+                const anexoLogo = document.getElementById('wp_anexar_logo_cliente').checked;
+                const logoTeste = anexoLogo ? (localStorage.getItem('custom_logo_base64') || window.LOGO_CANOAS_GAS_PNG_BASE64 || null) : null;
+
+                for (const num of numerosParaTentar) {
+                    try {
+                        const payload = {
+                            phone: num,
+                            message: msgInput
+                        };
+                        if (logoTeste) payload.image = logoTeste;
+
+                        const res = await fetch(urlApi, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+
+                        const json = await res.json().catch(() => null);
+
+                        if (res.ok && json && json.success) {
+                            enviado = true;
+                            numSucesso = num;
+                            break;
+                        } else {
+                            detalheErro = json?.error || (res.status + ' ' + res.statusText);
+                            console.warn(`Tentativa para ${num} falhou:`, detalheErro);
+                        }
+                    } catch (netErr) {
+                        detalheErro = netErr.message;
+                    }
                 }
 
-                const res = await fetch(urlApi, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                const json = await res.json();
-                if (res.ok) {
+                if (enviado) {
                     statusDiv.style.color = '#2ecc71';
-                    statusDiv.textContent = '✅ Mensagem de teste enviada com sucesso para o WhatsApp!';
+                    statusDiv.innerHTML = `✅ Mensagem enviada com sucesso pelo VPS! Destino: <b>${numSucesso}</b>`;
                 } else {
                     statusDiv.style.color = '#e74c3c';
-                    statusDiv.textContent = '❌ Erro ao enviar: ' + (json.error || 'Falha no VPS');
+                    statusDiv.textContent = '❌ Erro ao enviar pelo VPS: ' + detalheErro;
                 }
             } catch (e) {
                 statusDiv.style.color = '#e74c3c';
@@ -592,46 +631,113 @@
             }
         }
 
+        const DEFAULT_WP_MSG_CLIENTE = `Olá, {{nome_cliente}} 👋\n\nSeu pedido de {{produto}}, está a caminho!\n\n🛵 Entregador: {{nome_entregador}}\n\n-------------------------------\n\n👤 Cliente: {{nome_cliente}}\n📞 Tel: {{telefone_cliente}}\n🚚 Endereço: {{endereco}}\n📦 Produto: {{produto}}\n📝 Info:  {{info_adc}}\n💳 Pagamento:   {{forma_pagamento}}\n💵 Valor: {{valor}}   \n\nContato da revenda: 31 - 98255 7807 \n-------------------------------\n\nO tempo da entrega aproximado de 35 minutos.\n\nCanoas gás agradece sua confiança e preferência.!`;
+
+        const DEFAULT_WP_MSG_ENTREGADOR = `🚚 *NOVA ENTREGA*  *{{endereco}}*\n\n👤 *Cliente:* {{nome_cliente}}\n📞 *Tel:* {{telefone_cliente}}\n🏘️ *Endereço:* {{endereco}}\n📦 *Produto:* {{produto}}\n💰 *Valor:* {{valor}} \n💳 Pagamento:   {{forma_pagamento}}\n📝 *Info:* {{info_adc}}\n\nUse o aplicativo - Canoas.`;
+
         // Carregar configurações salvas
         function carregarConfiguracoes() {
-            document.getElementById('wp_url').value = localStorage.getItem('wp_url') || VPS_WHATSAPP_SEND_URL;
-            document.getElementById('wp_auto_cliente').checked = localStorage.getItem('wp_auto_cliente') === 'true';
-            document.getElementById('wp_auto_entregador').checked = localStorage.getItem('wp_auto_entregador') === 'true';
+            let savedUrl = localStorage.getItem('wp_url');
+            if (!savedUrl || savedUrl.includes('localhost') || savedUrl.includes(':3000')) {
+                savedUrl = VPS_WHATSAPP_SEND_URL;
+                localStorage.setItem('wp_url', savedUrl);
+            }
+            document.getElementById('wp_url').value = savedUrl;
+            document.getElementById('wp_auto_cliente').checked = localStorage.getItem('wp_auto_cliente') !== 'false';
+            document.getElementById('wp_auto_entregador').checked = localStorage.getItem('wp_auto_entregador') !== 'false';
             
             const anexoLogo = localStorage.getItem('wp_anexar_logo_cliente');
             document.getElementById('wp_anexar_logo_cliente').checked = (anexoLogo === null || anexoLogo === 'true');
             
-            document.getElementById('wp_msg_cliente').value = localStorage.getItem('wp_msg_cliente') || 
-                'Olá {{nome_cliente}}, seu pedido de {{produto}} no valor de R$ {{valor}} está a caminho com o entregador {{nome_entregador}}! 🛵💨';
+            const customSalvo = localStorage.getItem('custom_logo_base64');
+            if (customSalvo) {
+                const preview = document.getElementById('previewLogoCliente');
+                if (preview) preview.src = customSalvo;
+                const badge = document.getElementById('badgeOrigemLogo');
+                if (badge) badge.textContent = 'Personalizada';
+            }
             
-            document.getElementById('wp_msg_entregador').value = localStorage.getItem('wp_msg_entregador') || 
-                '🚀 Nova Entrega:\n👤 Cliente: {{nome_cliente}}\n📍 Endereço: {{endereco}}\n📦 Produto: {{produto}}\n💰 Valor: R$ {{valor}}\n💳 Pagamento: {{forma_pagamento}}';
+            document.getElementById('wp_msg_cliente').value = localStorage.getItem('wp_msg_cliente') || DEFAULT_WP_MSG_CLIENTE;
+            document.getElementById('wp_msg_entregador').value = localStorage.getItem('wp_msg_entregador') || DEFAULT_WP_MSG_ENTREGADOR;
 
             atualizarVisibilidadeBoxLogo();
+
+            // Buscar e sincronizar com Firebase RTDB se disponível
+            fetch('https://canoas-gas-default-rtdb.firebaseio.com/configuracoes_whatsapp.json')
+                .then(r => r.json())
+                .then(cfg => {
+                    if (!cfg) return;
+                    if (cfg.wp_url && !cfg.wp_url.includes('localhost') && !cfg.wp_url.includes(':3000')) {
+                        localStorage.setItem('wp_url', cfg.wp_url);
+                        document.getElementById('wp_url').value = cfg.wp_url;
+                    } else {
+                        document.getElementById('wp_url').value = VPS_WHATSAPP_SEND_URL;
+                        localStorage.setItem('wp_url', VPS_WHATSAPP_SEND_URL);
+                    }
+                    if (typeof cfg.wp_auto_cliente !== 'undefined') {
+                        document.getElementById('wp_auto_cliente').checked = !!cfg.wp_auto_cliente;
+                        localStorage.setItem('wp_auto_cliente', String(cfg.wp_auto_cliente));
+                    }
+                    if (typeof cfg.wp_auto_entregador !== 'undefined') {
+                        document.getElementById('wp_auto_entregador').checked = !!cfg.wp_auto_entregador;
+                        localStorage.setItem('wp_auto_entregador', String(cfg.wp_auto_entregador));
+                    }
+                    if (typeof cfg.wp_anexar_logo_cliente !== 'undefined') {
+                        document.getElementById('wp_anexar_logo_cliente').checked = !!cfg.wp_anexar_logo_cliente;
+                        localStorage.setItem('wp_anexar_logo_cliente', String(cfg.wp_anexar_logo_cliente));
+                    }
+                    if (cfg.wp_custom_logo_base64) {
+                        localStorage.setItem('custom_logo_base64', cfg.wp_custom_logo_base64);
+                        const preview = document.getElementById('previewLogoCliente');
+                        if (preview) preview.src = cfg.wp_custom_logo_base64;
+                        const badge = document.getElementById('badgeOrigemLogo');
+                        if (badge) badge.textContent = 'Configurada / Nuvem';
+                    }
+                    if (cfg.wp_msg_cliente) {
+                        document.getElementById('wp_msg_cliente').value = cfg.wp_msg_cliente;
+                        localStorage.setItem('wp_msg_cliente', cfg.wp_msg_cliente);
+                    }
+                    if (cfg.wp_msg_entregador) {
+                        document.getElementById('wp_msg_entregador').value = cfg.wp_msg_entregador;
+                        localStorage.setItem('wp_msg_entregador', cfg.wp_msg_entregador);
+                    }
+                    atualizarVisibilidadeBoxLogo();
+                })
+                .catch(() => {});
         }
 
         function salvarConfiguracoes() {
-            localStorage.setItem('wp_url', document.getElementById('wp_url').value.trim() || VPS_WHATSAPP_SEND_URL);
+            let finalUrl = document.getElementById('wp_url').value.trim();
+            if (!finalUrl || finalUrl.includes('localhost') || finalUrl.includes(':3000')) {
+                finalUrl = VPS_WHATSAPP_SEND_URL;
+                document.getElementById('wp_url').value = finalUrl;
+            }
+            localStorage.setItem('wp_url', finalUrl);
             localStorage.setItem('wp_auto_cliente', document.getElementById('wp_auto_cliente').checked);
             localStorage.setItem('wp_auto_entregador', document.getElementById('wp_auto_entregador').checked);
             localStorage.setItem('wp_anexar_logo_cliente', document.getElementById('wp_anexar_logo_cliente').checked);
             localStorage.setItem('wp_msg_cliente', document.getElementById('wp_msg_cliente').value);
             localStorage.setItem('wp_msg_entregador', document.getElementById('wp_msg_entregador').value);
 
-            // Salvar também no VPS / Firebase para sincronizar todos os dispositivos
-            if (window.firebaseSet && window.firebaseRef && window.remoteDb) {
-                try {
-                    window.firebaseSet('configuracoes_whatsapp', {
-                        wp_url: document.getElementById('wp_url').value.trim() || VPS_WHATSAPP_SEND_URL,
+            const customLogo = localStorage.getItem('custom_logo_base64') || window.LOGO_CANOAS_GAS_PNG_BASE64 || null;
+
+            // Sincronizar também no Firebase RTDB
+            try {
+                fetch('https://canoas-gas-default-rtdb.firebaseio.com/configuracoes_whatsapp.json', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        wp_url: finalUrl,
                         wp_auto_cliente: document.getElementById('wp_auto_cliente').checked,
                         wp_auto_entregador: document.getElementById('wp_auto_entregador').checked,
                         wp_anexar_logo_cliente: document.getElementById('wp_anexar_logo_cliente').checked,
+                        wp_custom_logo_base64: customLogo,
                         wp_msg_cliente: document.getElementById('wp_msg_cliente').value,
                         wp_msg_entregador: document.getElementById('wp_msg_entregador').value,
                         atualizadoEm: Date.now()
-                    });
-                } catch(e) {}
-            }
+                    })
+                }).catch(() => {});
+            } catch(e) {}
 
             const toast = document.getElementById('toast');
             toast.className = 'show';
@@ -649,7 +755,11 @@
             if (tipo === 'horizontal') {
                 preview.src = 'logo_whatsapp_16x9.png';
                 badge.textContent = 'Horizontal (16:9)';
-                localStorage.removeItem('custom_logo_base64');
+                if (window.LOGO_CANOAS_GAS_PNG_BASE64) {
+                    localStorage.setItem('custom_logo_base64', window.LOGO_CANOAS_GAS_PNG_BASE64);
+                } else {
+                    localStorage.removeItem('custom_logo_base64');
+                }
             } else if (tipo === 'stacked') {
                 preview.src = 'logo_whatsapp_stacked.png';
                 badge.textContent = 'Vertical';

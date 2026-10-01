@@ -1,4 +1,4 @@
-const CACHE_NAME = 'canoas-gas-v31';
+const CACHE_NAME = 'canoas-gas-v32';
 const ASSETS_TO_CACHE = [
     './index.html',
     './entregador.html',
@@ -6,6 +6,8 @@ const ASSETS_TO_CACHE = [
     './alertaproximidade.html',
     './cracha.html',
     './js/entregador.js',
+    './js/logo-png-base64.js',
+    './logo_whatsapp_16x9.png',
     './style.css',
     './mobile-cards.css',
     './manifest.json',

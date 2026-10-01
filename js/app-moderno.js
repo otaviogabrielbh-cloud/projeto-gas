@@ -477,7 +477,7 @@ function abrirModalPromocao(dados,displayProd,isPortaria,isPesquisa,textoEntrega
 function salvarEFinalizarPedido(dados,displayProd,isPortaria,isPesquisa,textoEntregador,textoCliente){
   push(ref(remoteDb,'pedidos_realtime'),dados);
   const setTxt=(id,txt)=>{const el=document.getElementById(id);if(el){el.innerText=txt;el.style.display=isPesquisa?'none':'block';}};
-  setTxt('resultado',textoEntregador);setTxt('msgCliente',textoCliente);
+  setTxt('resultado', window.gerarMensagemFichaEntregaUI ? window.gerarMensagemFichaEntregaUI(dados) : textoEntregador); setTxt('msgCliente',textoCliente);
   document.querySelectorAll('.secao-titulo,.btn-copiar').forEach(el=>{el.style.display=isPesquisa?'none':'block';});
   const btnEscala=document.getElementById('btnEscala');if(btnEscala)btnEscala.style.display=(isPortaria||isPesquisa)?'none':'block';
   if(isPesquisa)mostrarMensagemSucesso("Pesquisa salva! ✅");
